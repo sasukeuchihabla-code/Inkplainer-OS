@@ -201,6 +201,10 @@
   /* ─────────────────────────── camera keyframes ────────────────────────── */
 
   let _keyId = 0;
+  /** Keep the id counter ahead of ids loaded from a saved project. */
+  function reserveKeyId(id) {
+    if (isFiniteNum(id) && id > _keyId) _keyId = Math.floor(id);
+  }
   function makeKey(t, cam, ease) {
     return {
       id: ++_keyId,
@@ -427,6 +431,8 @@
    * `desiredScale` (typically the camera zoom at group start) lets us spend
    * buffer resolution where it is actually visible on screen.
    */
+  const MIN_STAGE_SCALE = 0.05;   // below this the reveal algorithms degrade
+
   function fitStage(bounds, bufW, bufH, opts) {
     const o = opts || {};
     const pad = o.pad == null ? 40 : o.pad;
@@ -434,7 +440,8 @@
     const contentH = Math.max(1, (bounds.h || 1) + pad * 2);
     const fitMax = Math.min(1, bufW / contentW, bufH / contentH);
     const desired = clamp(o.desiredScale == null ? 1 : o.desiredScale, 0.25, 4);
-    const scale = clamp(Math.min(fitMax, Math.max(desired, 0.5)), 0.05, 1);
+    const floor = o.minScale == null ? MIN_STAGE_SCALE : o.minScale;
+    const scale = clamp(Math.min(fitMax, Math.max(desired, 0.5)), floor, 1);
 
     const worldW = bufW / scale;
     const worldH = bufH / scale;
@@ -449,6 +456,11 @@
       bufH,
       worldW,
       worldH,
+      // false when the content is so large that even the minimum scale cannot
+      // fit it into the buffer — the caller should warn rather than pretend.
+      fits: contentW * scale <= bufW + 0.5 && contentH * scale <= bufH + 0.5,
+      contentW,
+      contentH,
     };
   }
 
@@ -527,7 +539,7 @@
     makePose, clonePose, viewRect, viewTransform,
     worldToScreen, screenToWorld, applyCanvasTransform, zoomAboutScreen,
     // keys
-    makeKey, sortKeys, poseAtKeys, keysDuration,
+    makeKey, reserveKeyId, sortKeys, poseAtKeys, keysDuration,
     // motion
     evalMotion, layerWorldRect,
     // follow

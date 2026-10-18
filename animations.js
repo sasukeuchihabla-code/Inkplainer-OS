@@ -558,6 +558,12 @@ function tickOutlineFill(speed) {
     const JUMP = 8 * resScale(); // px threshold — above this, lift the pen
     const step = Math.max(1, handSpeed);
     const pts  = state.ofPerimPts;
+    // Nothing to trace (empty or fully transparent layer): jump to the fill
+    // phase instead of indexing into an empty point list.
+    if (!pts || pts.length === 0) {
+      state.ofPhase = 2; state.ofColorIdx = 0; state.ofWaypointIdx = 0;
+      return;
+    }
     const newIdx = Math.min(state.ofPerimIdx + step, pts.length - 1);
     const oc = state.ofOutlineCanvas.getContext('2d');
 
@@ -890,6 +896,12 @@ function tickIllustFill(speed) {
   if (state.ifPhase === 1) {
     const step = Math.max(1, handSpeed);
     const pts  = state.ifPerimPts;
+    // Nothing to trace (empty or fully transparent layer): fall through to the
+    // fill phase rather than indexing into an empty point list.
+    if (!pts || pts.length === 0) {
+      state.ifPhase = 2; state.ifInkIdx = 0; state.ifInkLastDrawn = 0;
+      return;
+    }
     const newIdx = Math.min(state.ifPerimIdx + step, pts.length - 1);
     const oc = state.ifOutlineCanvas.getContext('2d');
     if (newIdx > state.ifLastDrawn) {
@@ -1816,7 +1828,11 @@ function _slotOut(slot) {
 
 // Dispatch one tick for a single slot
 function _tickSlot(slot) {
-  const speed = slot.layer.speed ?? parseInt(document.getElementById('speed-slider').value);
+  // world.js drives playback from the wall clock (see window.animate) so that
+  // the animation lasts the same number of SECONDS on a 30 Hz phone and a
+  // 120 Hz desktop, and so the exported video matches the preview.
+  const _fs = (typeof state._frameScale === 'number' && state._frameScale > 0) ? state._frameScale : 1;
+  const speed = (slot.layer.speed ?? parseInt(document.getElementById('speed-slider').value)) * _fs;
   // Temporarily push this layer's slider values so tick fns read correct values
   const _push = (id, v) => { const e=document.getElementById(id); if(e) e.value=v; };
   _push('speed-slider',      slot.layer.speed      ?? 40);
@@ -1862,10 +1878,12 @@ function _tickAllSlots() {
   // Check if every slot in this group has finished
   if (state._activeSlots.every(s => s.done)) {
     state.playing = false;
-    // Final composite: bgCanvas (has all baked layers) onto _mainCtx
+    // Final composite: bgCanvas (has all baked layers) onto _mainCtx.
+    // inkBeginWorld paints the background across the whole surface in SCREEN
+    // space and leaves the WORLD->SCREEN camera transform applied.
     _mainCtx.save();
     state._slotMode = false;
-    fillBg(_mainCtx);
+    inkBeginWorld(_mainCtx);
     // Re-draw above-baked layers so they don't flash invisible during the
     // 200ms gap between groups (same logic as the live-tick composite below).
     if (state._animGroups && state._animGroups.length > 1) {
@@ -1881,14 +1899,12 @@ function _tickAllSlots() {
         });
       }
       aboveBaked.sort((a, b) => state.layers.indexOf(a) - state.layers.indexOf(b));
-      aboveBaked.forEach(layer => {
-        _mainCtx.save();
-        _mainCtx.globalAlpha = layer.opacity ?? 1;
-        _mainCtx.drawImage(layer.img, layer.x, layer.y, layer.w, layer.h);
-        _mainCtx.restore();
-      });
+      aboveBaked.forEach(layer => inkDrawLayerWorld(_mainCtx, layer));
     }
+    // Layers that are not drawn by the hand engine (shapes, motion layers).
+    inkDrawDirect(_mainCtx, 'above');
     _mainCtx.restore();
+    inkEndWorld(_mainCtx);
 
     const nextGroup = (state._groupPos ?? 0) + 1;
     if (nextGroup < (state._animGroups || []).length) {
@@ -1903,11 +1919,13 @@ function _tickAllSlots() {
     return;
   }
 
-  // Composite: background + bgCanvas + each slot's drawn canvas
+  // Composite: background + baked content + each slot's drawn canvas.
+  // Every stage-sized buffer is blitted at its own place in the WORLD, so the
+  // drawing happens at the right world position while the camera pans/zooms.
   _mainCtx.save();
   state._slotMode = false;
-  fillBg(_mainCtx); // draws bg gradient + bgCanvas (already-completed layers)
-  state._activeSlots.forEach(slot => _mainCtx.drawImage(slot.canvas, 0, 0));
+  inkBeginWorld(_mainCtx);
+  state._activeSlots.forEach(slot => inkDrawStage(_mainCtx, slot.canvas));
 
   // Z-order fix: already-baked layers that are visually ABOVE the current group
   // (higher state.layers index) get covered by opaque pixels during the current
@@ -1926,15 +1944,15 @@ function _tickAllSlots() {
       });
     }
     aboveBaked.sort((a, b) => state.layers.indexOf(a) - state.layers.indexOf(b));
-    aboveBaked.forEach(layer => {
-      _mainCtx.save();
-      _mainCtx.globalAlpha = layer.opacity ?? 1;
-      _mainCtx.drawImage(layer.img, layer.x, layer.y, layer.w, layer.h);
-      _mainCtx.restore();
-    });
+    aboveBaked.forEach(layer => inkDrawLayerWorld(_mainCtx, layer));
   }
 
+  // Layers that are not drawn by the hand engine (shapes, motion layers).
+  inkDrawDirect(_mainCtx, 'above');
 
+  // The reveal blend below works in SCREEN space (it clips and reads pixels),
+  // so drop the camera transform for it.
+  inkEndWorld(_mainCtx);
 
   // Live reveal blend: start fading in the final image during the last ~35% of animation
   if (state._revealFinalCanvas) {
@@ -1944,11 +1962,12 @@ function _tickAllSlots() {
       const rawT = (prog - THRESHOLD) / (1 - THRESHOLD); // 0→1 over last 35%
       const ease = rawT < 0.5 ? 2*rawT*rawT : -1+(4-2*rawT)*rawT;
       const fc = state._revealFinalCanvas;
-      const W = state.canvasW, H = state.canvasH;
+      // Screen space: W/H are the OUTPUT surface, not the stage buffer.
+      const W = _mainCtx.canvas.width, H = _mainCtx.canvas.height;
 
       if (_revealStyle === 'fade' || _revealStyle === 'instant') {
         _mainCtx.globalAlpha = ease;
-        _mainCtx.drawImage(fc, 0, 0);
+        inkDrawStageOn(_mainCtx, fc);
         _mainCtx.globalAlpha = 1;
 
       } else if (_revealStyle === 'dissolve') {
@@ -1959,7 +1978,7 @@ function _tickAllSlots() {
         const imgData = _mainCtx.getImageData(0, 0, W, H);
         const raw = imgData.data;
         const tmp2 = document.createElement('canvas'); tmp2.width=W; tmp2.height=H;
-        const tc2 = tmp2.getContext('2d'); tc2.drawImage(fc, 0, 0);
+        const tc2 = tmp2.getContext('2d'); inkDrawStageOn(tc2, fc);
         const tData = tc2.getImageData(0, 0, W, H).data;
         for (let i = 0; i < state._dissolveMap.length; i++) {
           if (state._dissolveMap[i] < ease) {
@@ -1973,7 +1992,7 @@ function _tickAllSlots() {
         const wipeX = Math.round(ease * W);
         _mainCtx.save();
         _mainCtx.beginPath(); _mainCtx.rect(0, 0, wipeX, H); _mainCtx.clip();
-        _mainCtx.drawImage(fc, 0, 0);
+        inkDrawStageOn(_mainCtx, fc);
         _mainCtx.restore();
         const grd = _mainCtx.createLinearGradient(wipeX-14, 0, wipeX+14, 0);
         grd.addColorStop(0,'rgba(255,255,255,0)'); grd.addColorStop(0.5,'rgba(255,255,255,0.22)'); grd.addColorStop(1,'rgba(255,255,255,0)');
@@ -1984,7 +2003,7 @@ function _tickAllSlots() {
         const r = ease * Math.sqrt(cx2*cx2+cy2*cy2) * 1.06;
         _mainCtx.save();
         _mainCtx.beginPath(); _mainCtx.arc(cx2, cy2, r, 0, Math.PI*2); _mainCtx.clip();
-        _mainCtx.drawImage(fc, 0, 0);
+        inkDrawStageOn(_mainCtx, fc);
         _mainCtx.restore();
 
       } else if (_revealStyle === 'scan-lines') {
@@ -1997,7 +2016,7 @@ function _tickAllSlots() {
           _mainCtx.save();
           const sx = (s%2===0) ? 0 : W-revealW;
           _mainCtx.beginPath(); _mainCtx.rect(sx, s*slatH, revealW, slatH+1); _mainCtx.clip();
-          _mainCtx.drawImage(fc, 0, 0);
+          inkDrawStageOn(_mainCtx, fc);
           _mainCtx.restore();
         }
       }

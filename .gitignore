@@ -1,3 +1,6 @@
 .DS_Store
 Thumbs.db
 .vscode/
+# Dev-only: jsdom test harness (npm i jsdom fake-indexeddb to run tests)
+node_modules/
+package-lock.json
