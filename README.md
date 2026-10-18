@@ -49,6 +49,13 @@ python3 -m http.server 8080
 
 Then open the serving local (e.g.,`http://localhost:8080`) in your preferred browser.
 
+> **On a phone.** Under 900 px wide the app shows a "works best on a desktop
+> browser" card, because a three-pane editor is cramped on a small screen.
+> Tap **Continue anyway on this screen** to use it: the same UI stacks
+> vertically (canvas first, panels below) and your choice is remembered.
+> Video export on a phone needs **Chrome or Edge over HTTPS** — see the note
+> below.
+
 A local static server is required (rather than opening `index.html` directly) due to browser CORS and Canvas security policies when processing images.
 
 > **Important (Hosting, HTTPS & Video Export):** Inkplainer uses the WebCodecs API for video recording and encoding. Browsers only enable WebCodecs in a **Secure Context** (HTTPS or `localhost`). If you host Inkplainer on a local network using plain HTTP (for example, `http://192.168.1.100:8080`) and access it from another device, **video export will not be available**.
@@ -455,11 +462,11 @@ applied exactly once.
 ```bash
 npm install jsdom fake-indexeddb     # dev-only; the app needs neither
 node tests/camera.test.mjs           # 131 checks
-node tests/smoke.test.mjs            # 104 checks
+node tests/smoke.test.mjs            # 115 checks
 node tests/animation.test.mjs        #  32 checks
 ```
 
-267 checks, all passing. `smoke` and `animation` boot the real `index.html` in
+278 checks, all passing. `smoke` and `animation` boot the real `index.html` in
 jsdom with a recording canvas mock and a deterministic clock.
 
 See [TESTS.md](TESTS.md) for exactly what each suite proves, what was verified

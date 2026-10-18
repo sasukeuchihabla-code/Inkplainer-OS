@@ -8,7 +8,7 @@ Run everything from the repository root:
 ```bash
 npm install jsdom fake-indexeddb        # dev-only, not needed by the app
 node tests/camera.test.mjs              #   131 checks
-node tests/smoke.test.mjs               #   108 checks
+node tests/smoke.test.mjs               #   115 checks
 node tests/animation.test.mjs           #    32 checks
 ```
 
@@ -17,9 +17,9 @@ Latest run (2026-10-18, Node v22.22.3):
 | Suite | Checks | Result | What it exercises |
 |-------|-------:|--------|-------------------|
 | `tests/camera.test.mjs` | 131 | ✅ all pass | pure camera maths, no DOM |
-| `tests/smoke.test.mjs` | 108 | ✅ all pass | the **real `index.html`** booted in jsdom |
+| `tests/smoke.test.mjs` | 115 | ✅ all pass | the **real `index.html`** booted in jsdom |
 | `tests/animation.test.mjs` | 32 | ✅ all pass | real `generate()` + playback on a hand-driven clock |
-| **Total** | **271** | **0 failures** | |
+| **Total** | **278** | **0 failures** | |
 
 The app itself needs none of this — jsdom and fake-indexeddb are dev-only and
 are not shipped (they are git-ignored).
@@ -43,6 +43,7 @@ page allocates**.
 | Group | Proven |
 |-------|--------|
 | A. Boot | all scripts parse and run with zero runtime errors |
+| A1. Narrow screens | the "desktop only" gate can be dismissed, the choice is remembered, and the stacked phone layout has real CSS behind it (the app is still hidden for people who do not opt in) |
 | A2. Startup payload | the page requests **6 hand images, not 36** — 28.6 MB less to download on first load; resizing to 1080 × 1920 then fetches only the matching hands |
 | B. Viewport | default zoom 1 + centred camera ⇒ **old projects frame identically**; stage defaults to scale 1, offset 0 ⇒ **old project coordinates are unchanged** |
 | C. Coordinates | `screen → world → screen` round-trips to < 1e-9 px |
@@ -67,6 +68,16 @@ virtual clock, so frames are stepped deterministically.
 | D. Export gate | `isExportAnimationComplete()` now waits for the camera timeline, and behaves exactly as before when there is no camera animation |
 
 ### Bugs found while preparing for on-device testing
+6. **`index.html` — the app hid itself completely below 900 px.** A
+   `@media (max-width: 899px)` rule set `display: none !important` on the top
+   bar, sidebar, canvas and right panel, leaving only an "Inkplainer works
+   best on a desktop browser" card. On a phone you could not open the editor
+   at all. The gate is still the default, but it now has a **Continue anyway
+   on this screen** button that adds `body.mobile-continue`, stacks the same
+   UI vertically (canvas first, panels below), and remembers the choice in
+   `localStorage`. Nothing is removed or redesigned.
+
+
 4. **`index.html` — 30 MB downloaded on every page load.** `loadCustomHandImages()`
    fetched all 6 hands × 6 resolutions (36 PNGs) 100 ms after load, and each
    1440p hand decodes to ~15 MB of RAM. On mobile data that is slow enough to

@@ -3270,16 +3270,60 @@ input[type="number"]:focus { border-color: var(--accent); }
     min-height: 100vh;
     overflow: auto;
   }
-  #desktop-only-notice { display: flex; }
-  #topbar,
-  #sidebar,
-  #main,
-  #right-panel,
-  #projects-modal,
-  #export-banner,
-  #welcome-overlay,
-  #slicer-modal { display: none !important; }
+  body:not(.mobile-continue) #desktop-only-notice { display: flex; }
+  body:not(.mobile-continue) #topbar,
+  body:not(.mobile-continue) #sidebar,
+  body:not(.mobile-continue) #main,
+  body:not(.mobile-continue) #right-panel,
+  body:not(.mobile-continue) #projects-modal,
+  body:not(.mobile-continue) #export-banner,
+  body:not(.mobile-continue) #welcome-overlay,
+  body:not(.mobile-continue) #slicer-modal { display: none !important; }
 }
+
+/* ── Phone layout (chosen from the notice below) ────────────────────────────
+   Inkplainer hid itself completely under 900 px.  That is the right default
+   for a three-pane desktop editor, but it made the app impossible to use on
+   the only device some people have.  With .mobile-continue the same UI is
+   stacked: top bar, then the canvas, then the two panels below it.  Nothing
+   is removed or redesigned - it is one page you scroll. */
+@media (max-width: 899px) {
+  body.mobile-continue { height: auto; min-height: 100vh; overflow-y: auto; }
+  body.mobile-continue #desktop-only-notice { display: none !important; }
+  body.mobile-continue #app-body { flex-direction: column; overflow: visible; }
+  body.mobile-continue #main { overflow: visible; min-width: 0; }
+  body.mobile-continue #sidebar,
+  body.mobile-continue #right-panel {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    max-height: none;
+    overflow: visible;
+    border-right: none;
+    border-left: none;
+    border-bottom: 1px solid var(--border);
+    order: 2;
+  }
+  body.mobile-continue #main { order: 1; }
+  body.mobile-continue #canvas-area { min-height: 56vh; padding: 8px; }
+  body.mobile-continue #canvas-wrapper { min-height: 50vh; }
+  body.mobile-continue #topbar { position: sticky; top: 0; }
+}
+
+.desktop-only-continue {
+  width: 100%;
+  padding: 11px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  color: #fff;
+  background: var(--accent);
+  border: none;
+  border-radius: 9px;
+  cursor: pointer;
+  margin-top: 4px;
+}
+.desktop-only-continue:hover { background: #000; }
 
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -3546,8 +3590,34 @@ input[type="number"]:focus { border-color: var(--accent); }
     <p>This is a canvas-based animation editor with side panels, drag controls, video recording, and project storage. Please open it on a laptop or desktop screen for the full app.</p>
         
     <p>Please open Inkplainer on a laptop or desktop screen for the full app.</p>
+
+    <button class="desktop-only-continue" onclick="continueOnMobile()">Continue anyway on this screen →</button>
+    <p style="font-size:12px;color:var(--muted);margin:12px 0 0;line-height:1.55;">
+      On a phone the panels stack above and below the canvas &mdash; usable, but
+      you will scroll a lot. Video export needs <strong>Chrome or Edge over
+      HTTPS</strong>. Your choice is remembered on this device.
+    </p>
       </div>
 </div>
+<script>
+/* The notice above is the app's default for narrow screens.  Continue anyway
+   keeps the same UI, just stacked vertically, and remembers the choice. */
+(function () {
+  var KEY = 'inkMobileContinue';
+  try { if (localStorage.getItem(KEY) === '1') document.body.classList.add('mobile-continue'); } catch (e) {}
+  window.continueOnMobile = function continueOnMobile() {
+    document.body.classList.add('mobile-continue');
+    try { localStorage.setItem(KEY, '1'); } catch (e) {}
+    // Let the new layout settle, then re-fit the viewport canvases to it.
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        try { if (typeof fitCanvas === 'function') fitCanvas(); } catch (e) {}
+        try { if (typeof renderCameraUI === 'function') renderCameraUI(); } catch (e) {}
+      });
+    });
+  };
+})();
+</script>
 
 
 

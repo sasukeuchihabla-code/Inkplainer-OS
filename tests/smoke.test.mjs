@@ -105,6 +105,23 @@ ok(typeof win.InkWorld === 'object' && win.InkWorld !== null, 'world.js exposes 
 ok(typeof win.eval('typeof state') === 'string' && win.eval('typeof state') === 'object', 'global state exists');
 ok(typeof win.loadDemoJourney === 'function', 'demo.js exposes loadDemoJourney()');
 
+group('A1. The app is reachable on a narrow screen');
+{
+  // The app used to hide itself completely below 900 px and show only a
+  // "works best on a desktop" notice, which made a phone unusable.
+  const notice = doc.getElementById('desktop-only-notice');
+  ok(!!notice, 'the narrow-screen notice exists');
+  ok(typeof win.continueOnMobile === 'function', 'continueOnMobile() exists');
+  ok(!doc.body.classList.contains('mobile-continue'), 'the phone layout is off by default');
+  win.continueOnMobile();
+  ok(doc.body.classList.contains('mobile-continue'), 'continuing switches the page to the stacked layout');
+  ok(win.eval("localStorage.getItem('inkMobileContinue')") === '1', 'the choice is remembered');
+  const css = [...doc.querySelectorAll('style')].map((n) => n.textContent).join('\n');
+  ok(/body\.mobile-continue #app-body/.test(css), 'the stacked layout has real CSS behind it');
+  ok(/body:not\(\.mobile-continue\) #main/.test(css), 'the app is still hidden for people who do not opt in');
+  doc.body.classList.remove('mobile-continue');   // leave the rest of the run as-is
+}
+
 group('A2. Startup payload (mobile data / memory)');
 {
   const reqs = stats.imageSrcs.filter((u) => /hand\d/i.test(u));
