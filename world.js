@@ -499,8 +499,45 @@
    * 9. VIEWPORT RENDER  (replaces redrawLayersOnCanvas)
    * ═════════════════════════════════════════════════════════════════════ */
 
+  /* ── Frame-size changes ────────────────────────────────────────────────────
+   * Switching ratio (16:9 -> 9:16) or resolution makes the app rescale and
+   * re-centre every layer.  The camera has to follow the same transform, or
+   * "Home" and the current view end up pointing at the old frame's centre.
+   * World units are frame pixels at zoom 1, so zoom itself is unchanged.
+   */
+  let _frameW = 0, _frameH = 0;
+
+  function syncCameraToFrame() {
+    const w = state.canvasW, h = state.canvasH;
+    if (!w || !h) return;
+    if (!_frameW || !_frameH) { _frameW = w; _frameH = h; return; }
+    if (w === _frameW && h === _frameH) return;
+
+    const oldW = _frameW, oldH = _frameH;
+    _frameW = w; _frameH = h;
+
+    // Same rule the app uses to rescale layers (see _applyCanvasSizeImmediate).
+    const sx = w / oldW, sy = h / oldH;
+    const growing = sx > 1 && sy > 1;
+    const shrinking = sx < 1 && sy < 1;
+    let s = (growing || shrinking) ? Math.min(sx, sy) : Math.sqrt(sx * sy);
+    s = Math.max(s, 0.3);
+
+    const remap = (p) => {
+      if (!p) return p;
+      p.x = w / 2 + (p.x - oldW / 2) * s;
+      p.y = h / 2 + (p.y - oldH / 2) * s;
+      return p;
+    };
+    remap(state.camera);
+    remap(state.homeCamera);
+    state._camSmooth = {};
+    updateCameraHud();
+  }
+
   function renderViewport() {
     if (!_mainCtx) return;
+    syncCameraToFrame();
     ensureViewport();
     renderFrameTo(_mainCtx, VP.w, VP.h, { grid: true, frameOutline: true, hand: true });
     drawSelectionHandles();

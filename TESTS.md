@@ -8,7 +8,7 @@ Run everything from the repository root:
 ```bash
 npm install jsdom fake-indexeddb        # dev-only, not needed by the app
 node tests/camera.test.mjs              #   131 checks
-node tests/smoke.test.mjs               #   104 checks
+node tests/smoke.test.mjs               #   108 checks
 node tests/animation.test.mjs           #    32 checks
 ```
 
@@ -17,9 +17,9 @@ Latest run (2026-10-18, Node v22.22.3):
 | Suite | Checks | Result | What it exercises |
 |-------|-------:|--------|-------------------|
 | `tests/camera.test.mjs` | 131 | ✅ all pass | pure camera maths, no DOM |
-| `tests/smoke.test.mjs` | 104 | ✅ all pass | the **real `index.html`** booted in jsdom |
+| `tests/smoke.test.mjs` | 108 | ✅ all pass | the **real `index.html`** booted in jsdom |
 | `tests/animation.test.mjs` | 32 | ✅ all pass | real `generate()` + playback on a hand-driven clock |
-| **Total** | **267** | **0 failures** | |
+| **Total** | **271** | **0 failures** | |
 
 The app itself needs none of this — jsdom and fake-indexeddb are dev-only and
 are not shipped (they are git-ignored).
@@ -42,13 +42,14 @@ page allocates**.
 
 | Group | Proven |
 |-------|--------|
-| A. Boot | all four scripts parse and run with zero runtime errors |
+| A. Boot | all scripts parse and run with zero runtime errors |
+| A2. Startup payload | the page requests **6 hand images, not 36** — 28.6 MB less to download on first load; resizing to 1080 × 1920 then fetches only the matching hands |
 | B. Viewport | default zoom 1 + centred camera ⇒ **old projects frame identically**; stage defaults to scale 1, offset 0 ⇒ **old project coordinates are unchanged** |
 | C. Coordinates | `screen → world → screen` round-trips to < 1e-9 px |
 | D. Pan/zoom | zoom keeps the pixel under the finger/cursor pinned (X and Y) |
 | E. Layers | `layer.x/y` do **not** change when the camera pans or zooms; fit-all and centre-selection produce sane poses |
 | F. Rendering | `renderViewport()` and an export-size render both run clean and issue `drawImage` + `setTransform` |
-| G. Demo | the 3-scene demo builds 4 layers spread 4 370 world units apart, 6 camera keys, 4 scenes; the point moves monotonically; **no camera teleport** (largest 0.1 s step is 3.1 % of the whole path); zoom samples are positive, finite and free of seam discontinuities; follow is pre-configured but **off**, and enabling it does centre the point |
+| G. Demo | the 3-scene demo builds 4 layers spread 4 370 world units apart, 6 camera keys, 4 scenes; the point moves monotonically; **no camera teleport** (largest 0.1 s step is 3.1 % of the whole path); zoom samples are positive, finite and free of seam discontinuities; **every keyframe frames content** (none looks at empty space); follow is pre-configured but **off**, and enabling it does centre the point |
 | H. No giant bitmap | 60 pan/zoom renders allocate nothing above the frame size; a 2 000 000-unit-wide world still gets a **720 × 1280 buffer** (scaled down, with `fits:false` reported); a 12 000-unit world still fits (`fits:true`) |
 | I. Save/restore | camera, keys and scenes survive `inkSerializeWorld` → `inkRestoreWorld`; **a legacy snapshot with no camera data restores to a usable default** |
 | J. Camera UI | nav/select tools, grid toggle, scrub, add/duplicate/delete key, add scene, go-to-scene, and the key/scene/follow lists actually render DOM |
@@ -64,6 +65,20 @@ virtual clock, so frames are stepped deterministically.
 | B. Timing | **1 s of wall clock = 1 s of movie time** at 30 fps (1.000 s) and at 60 fps (1.017 s) — the old per-frame stepping made a 60 Hz phone play the movie at double speed and made exports drift |
 | C. Shared clock | the camera travels 150.9 world units in 1.33 s of timeline; at t = 0.5/2/4/6/8/10 s the camera converges onto the keyframed pose to **within 0.000 world units** — this is the invariant that makes an exported frame identical to a previewed frame |
 | D. Export gate | `isExportAnimationComplete()` now waits for the camera timeline, and behaves exactly as before when there is no camera animation |
+
+### Bugs found while preparing for on-device testing
+4. **`index.html` — 30 MB downloaded on every page load.** `loadCustomHandImages()`
+   fetched all 6 hands × 6 resolutions (36 PNGs) 100 ms after load, and each
+   1440p hand decodes to ~15 MB of RAM. On mobile data that is slow enough to
+   look broken. It now loads only the resolution the current canvas needs
+   (6 images ≈ 2.5 MB), re-fetches when the canvas size changes, and
+   `drawCustomHand` falls back to any already-loaded resolution (identical
+   aspect ratio) instead of drawing a red "image missing" box.
+5. **`world.js` — camera left behind by a canvas-size change.** Switching
+   ratio or resolution rescales and re-centres every layer, but the camera
+   kept pointing at the old frame centre, so "Home" framed the wrong place.
+   `syncCameraToFrame()` now applies the same rescale rule to the camera and
+   the home pose.
 
 ### Bugs the harness found and that are now fixed
 1. `animations.js` — `tickOutlineFill` / `tickIllustFill` crashed with

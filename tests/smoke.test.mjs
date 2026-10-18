@@ -105,6 +105,31 @@ ok(typeof win.InkWorld === 'object' && win.InkWorld !== null, 'world.js exposes 
 ok(typeof win.eval('typeof state') === 'string' && win.eval('typeof state') === 'object', 'global state exists');
 ok(typeof win.loadDemoJourney === 'function', 'demo.js exposes loadDemoJourney()');
 
+group('A2. Startup payload (mobile data / memory)');
+{
+  const reqs = stats.imageSrcs.filter((u) => /hand\d/i.test(u));
+  const bytesOf = (list) => list.reduce((n, u) => {
+    try { return n + fs.statSync(path.join(ROOT, u.split('/').slice(-2).join('/'))).size; } catch (e) { return n; }
+  }, 0);
+  const allHands = fs.readdirSync(path.join(ROOT, 'images')).filter((f) => /^hand\d/.test(f))
+    .map((f) => 'images/' + f);
+  ok(reqs.length > 0 && reqs.length <= 6,
+    `startup requests only the hand set for the current canvas size (${reqs.length} of ${allHands.length} images)`);
+  const saved = (bytesOf(allHands) - bytesOf(reqs)) / 1e6;
+  ok(saved > 10, `that is ~${saved.toFixed(1)} MB less to download on first load (was ${(bytesOf(allHands) / 1e6).toFixed(1)} MB for all 36)`);
+
+  // Changing the canvas size must fetch the matching resolution instead of
+  // everything up front.
+  const before = stats.imageSrcs.length;
+  win.eval('initCanvas(1080, 1920)');
+  await new Promise((r) => win.setTimeout(r, 40));
+  const added = stats.imageSrcs.slice(before).filter((u) => /hand\d/i.test(u));
+  ok(added.length > 0 && added.every((u) => /vertical-1080p/.test(u)),
+    `resizing to 1080×1920 fetches just the matching hands (${added.length}: ${added[0] || 'none'})`);
+  win.eval('initCanvas(720, 1280)');
+  await new Promise((r) => win.setTimeout(r, 20));
+}
+
 // `const state = {...}` in a classic script is a global LEXICAL binding,
 // not a window property, so it has to be reached with eval().
 const state = win.eval('state');
@@ -271,6 +296,24 @@ group('G. Three-scene demo composition');
     if (!isFinite(r) || r > 3 || r < 1 / 3) bigJump = true;
   }
   ok(!bigJump, 'zoom changes smoothly (no discontinuity at keyframe seams)');
+
+  // End-to-end composition check: at every keyframe the camera must actually
+  // be looking at the part of the story that belongs to that moment.
+  {
+    let blind = [];
+    K.sortKeys(state.camRig.keys);
+    for (const k of state.camRig.keys) {
+      const view = K.viewRect(k, state.canvasW, state.canvasH);
+      const hit = state.layers.some((l) => {
+        const r = K.layerWorldRect(l, dur);
+        return r.x < view.x + view.w && r.x + r.w > view.x &&
+               r.y < view.y + view.h && r.y + r.h > view.y;
+      });
+      if (!hit) blind.push('t=' + k.t + ' @' + Math.round(k.x) + ',' + Math.round(k.y));
+    }
+    ok(blind.length === 0,
+      `every keyframe frames content — none look at empty space${blind.length ? ' (blind: ' + blind.join(', ') + ')' : ''}`);
+  }
 
   // follow target is pre-configured but off
   ok(state.camRig.follow && state.camRig.follow.layerId === dot.id, 'follow target points at the moving point');

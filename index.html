@@ -6357,6 +6357,12 @@ function initCanvas(w,h) {
     if (el) el.textContent = sizeText;
   }
   
+  // The hand graphics are fetched per canvas resolution (720/1080/1440 and the
+  // vertical variants).  Warm the set the new size needs.  Deferred by a tick
+  // because initCanvas() also runs during page start-up, before CUSTOM_HANDS
+  // has been defined.
+  if (typeof loadCustomHandImages === 'function') setTimeout(loadCustomHandImages, 0);
+
   redrawLayersOnCanvas();
 }
 function fitCanvas() {
@@ -9701,26 +9707,36 @@ const CUSTOM_HANDS = {
 // Storage for loaded hand images
 const customHandImages = {};
 
-// Load all custom hand images for all resolutions
-function loadCustomHandImages() {
+// Which resolution key we have already requested.  Loading every hand at every
+// resolution meant 36 PNGs (~30 MB) on every page load — punishing on mobile
+// data, and hundreds of megabytes once decoded.  We now fetch only the
+// resolution the current canvas actually needs (6 images), and switch when the
+// canvas size or orientation changes.
+// `var`, not `let`: initCanvas() can call this before this line is reached,
+// and a `let` in its temporal dead zone would throw.
+var _handResRequested = null;
+
+function loadCustomHandImages(resOverride) {
+  const res = resOverride || getCurrentResolution();
+  if (res === _handResRequested) return;   // already requested for this size
+  _handResRequested = res;
   for (const [handId, handConfig] of Object.entries(CUSTOM_HANDS)) {
-    customHandImages[handId] = {};
-    
-    for (const [resolution, imageData] of Object.entries(handConfig.images)) {
-      const img = new Image();
-      img.onload = () => {
-        customHandImages[handId][resolution] = img;
-        console.log(`✓ Loaded ${handId} at ${resolution}p`);
-      };
-      img.onerror = () => {
-        console.error(`✗ Failed to load ${handId} at ${resolution}p from ${imageData.path}`);
-      };
-      img.src = imageData.path;
-    }
+    const imageData = handConfig.images[res];
+    if (!imageData) continue;
+    if (customHandImages[handId] && customHandImages[handId][res]) continue;
+    const img = new Image();
+    img.onload = () => {
+      customHandImages[handId] = customHandImages[handId] || {};
+      customHandImages[handId][res] = img;
+    };
+    img.onerror = () => {
+      console.error(`\u2717 Failed to load ${handId} at ${res} from ${imageData.path}`);
+    };
+    img.src = imageData.path;
   }
 }
 
-// Call this when the page loads
+// Load the hands for the current canvas size when the page loads
 setTimeout(loadCustomHandImages, 100);
 
 // Get the appropriate resolution key based on canvas dimensions and orientation
@@ -9751,8 +9767,19 @@ function drawCustomHand(c, hx, hy, tipX, tipY, style) {
   
   const resolution = getCurrentResolution();
   const imageConfig = handConfig.images[resolution];
-  const img = customHandImages[style] && customHandImages[style][resolution];
-  
+  let img = customHandImages[style] && customHandImages[style][resolution];
+
+  // The canvas was resized (or the first load has not finished yet): ask for
+  // this resolution and use any other one we already have in the meantime.
+  // Every hand image shares the same aspect ratio, so a fallback drawn at the
+  // current resolution's width/height lines up correctly.
+  if (!img && imageConfig) {
+    if (typeof loadCustomHandImages === 'function') loadCustomHandImages(resolution);
+    const loaded = customHandImages[style] || {};
+    const anyRes = Object.keys(loaded)[0];
+    img = anyRes ? loaded[anyRes] : null;
+  }
+
   if (!img || !imageConfig) {
     // Image not loaded - show error and fallback to marker
     c.save();

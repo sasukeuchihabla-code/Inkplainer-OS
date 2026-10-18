@@ -16,6 +16,7 @@ export const stats = {
   maxPixels: 0,
   calls: {},          // method name -> count
   drawImages: [],     // {srcW, srcH, args}
+  imageSrcs: [],      // every src assigned to an <img>, i.e. every file fetched
   lastError: null,
 };
 
@@ -26,6 +27,7 @@ export function resetStats() {
   stats.maxPixels = 0;
   stats.calls = {};
   stats.drawImages.length = 0;
+  stats.imageSrcs.length = 0;
   stats.lastError = null;
 }
 
@@ -202,6 +204,7 @@ export function installCanvasMock(win, opts = {}) {
     get height() { return this._h; }
     set src(v) {
       this._src = v;
+      stats.imageSrcs.push(String(v));
       this.complete = true;
       // Defer like a real browser so async code paths are exercised.
       win.setTimeout(() => { if (this.onload) this.onload({ target: this }); }, 0);
