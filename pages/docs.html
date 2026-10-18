@@ -467,7 +467,19 @@ kbd {
     </div>
 
     <div class="nav-section">
-      <a class="nav-section-link" href="#s7">7 — Export</a>
+      <a class="nav-section-link" href="#s7">7 — Camera</a>
+      <div class="nav-sub-links">
+        <a class="nav-sub-link" href="#infinite-canvas">Infinite Canvas</a>
+        <a class="nav-sub-link" href="#camera-basics">Moving Around</a>
+        <a class="nav-sub-link" href="#cam-keyframes">Camera Keyframes</a>
+        <a class="nav-sub-link" href="#cam-follow">Follow Mode</a>
+        <a class="nav-sub-link" href="#cam-scenes">Scenes</a>
+        <a class="nav-sub-link" href="#cam-demo">The Demo</a>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <a class="nav-section-link" href="#s8">8 — Export</a>
       <div class="nav-sub-links">
         <a class="nav-sub-link" href="#generate">Generate</a>
         <a class="nav-sub-link" href="#playbar">Playbar</a>
@@ -955,10 +967,104 @@ kbd {
       <p class="doc-p">720p is the right choice for most use cases — renders faster and produces smaller files. Use 1080p for large screens or high-resolution embeds. Use 1440p only when output quality genuinely demands it — render time increases significantly.</p>
     </div>
 
-    <!-- ═══ SECTION 7 ═══ -->
+    <!-- ═══ SECTION 7 — CAMERA ═══ -->
     <div class="doc-section" id="s7">
       <div class="section-eyebrow">Section 7</div>
-      <h2 class="section-title"><div class="section-num">7</div> Generating and Exporting</h2>
+      <h2 class="section-title"><div class="section-num">7</div> The Infinite Canvas and Camera</h2>
+
+      <h3 class="doc-h3" id="infinite-canvas">The Canvas Is No Longer the Frame</h3>
+      <p class="doc-p">Inkplainer used to be limited to the size of your video: everything had to live inside a 1280 &times; 720 rectangle. It no longer is. The world is boundless, and the video frame is simply a window that moves through it — like a camera on a rail.</p>
+      <p class="doc-p">Three coordinate spaces are involved, and it helps to know which one you are looking at:</p>
+      <ul class="doc-ul">
+        <li><strong>World</strong> — where your layers live. One world unit is one pixel of the export frame at zoom 1, so <em>old projects and old coordinates are completely unchanged</em>. Nothing is migrated.</li>
+        <li><strong>Stage</strong> — the frame-sized buffer the drawing engine actually draws into. It is always the size of your export frame, no matter how big the world gets, so memory stays flat.</li>
+        <li><strong>Screen</strong> — the pixels on your display, where you pan and zoom.</li>
+      </ul>
+      <p class="doc-p">This is why a composition spread over five thousand units does not allocate a five-thousand-pixel-wide bitmap: content is drawn into a frame-sized buffer that is <em>scaled</em> to cover the region being animated, then the camera transforms that buffer onto the screen.</p>
+
+      <hr class="doc-hr">
+
+      <h3 class="doc-h3" id="camera-basics">Moving Around</h3>
+      <p class="doc-p">The camera toolbar sits over the canvas. From left to right:</p>
+      <ul class="doc-ul">
+        <li><strong>Select / Navigate</strong> — the two tools. In <em>Select</em>, dragging moves and resizes objects as before. In <em>Navigate</em>, dragging moves the camera.</li>
+        <li><strong>Zoom out / readout / zoom in</strong> — clicking the readout resets zoom to 100 %.</li>
+        <li><strong>Home</strong> — returns the camera to the exported frame, centred at zoom 1. This is the view old projects open in.</li>
+        <li><strong>Fit all</strong> — frames every visible layer.</li>
+        <li><strong>Centre on selection</strong> — puts the camera on the selected layer.</li>
+        <li><strong>Grid</strong> and <strong>Frame outline</strong> — show the world grid, and show where the exported video's edges are. Neither appears in the export.</li>
+      </ul>
+
+      <table class="doc-table">
+        <thead><tr><th>Action</th><th>Mouse / trackpad</th><th>Touch</th></tr></thead>
+        <tbody>
+          <tr><td>Pan</td><td>Drag with the Navigate tool, hold <kbd>Space</kbd> and drag, or middle-drag</td><td>One-finger drag with the Navigate tool</td></tr>
+          <tr><td>Zoom</td><td>Scroll wheel — keeps the point under the cursor fixed</td><td>Pinch</td></tr>
+          <tr><td>Zoom to 100 %</td><td>Click the zoom readout</td><td>Tap the zoom readout</td></tr>
+        </tbody>
+      </table>
+
+      <p class="doc-p">A small HUD under the canvas shows the current zoom, the world position of the camera, and the timeline position.</p>
+      <div class="doc-tip">The grid and the frame outline are drawn in screen space, so they stay crisp and correctly spaced at every zoom level — and neither ever ends up in your exported video.</div>
+
+      <hr class="doc-hr">
+
+      <h3 class="doc-h3" id="cam-keyframes">Camera Keyframes</h3>
+      <p class="doc-p">The <strong>Camera</strong> tab in the left sidebar holds the camera timeline. A keyframe records where the camera is and when it should be there.</p>
+      <ol class="doc-ol">
+        <li>Move the camera to the first view and press <strong>+ Add keyframe</strong>.</li>
+        <li>Move the playhead (or let the animation time advance), move the camera again, add another keyframe.</li>
+        <li>Choose an easing for each keyframe: Linear, Ease In, Ease Out, or Ease In-Out.</li>
+        <li>Scrub the timeline to preview; play, pause, duplicate, edit and delete keys from the list.</li>
+      </ol>
+      <p class="doc-p">Each keyframe stores a time, world X, world Y, zoom, an optional rotation, and an easing. Rotation is fully implemented end to end, though there is no rotation handle in the UI yet — you type the value into the keyframe.</p>
+      <div class="doc-tip"><strong>Zoom interpolates geometrically.</strong> Halfway between 0.7&times; and 1.7&times; is 1.09&times;, not 1.2&times;. This is how a real dolly feels, and it is what stops a slow push from appearing to accelerate near the end.</div>
+      <p class="doc-p">If you want an instant jump rather than a move, set the keyframe's transition to <strong>Cut</strong>.</p>
+
+      <hr class="doc-hr">
+
+      <h3 class="doc-h3" id="cam-follow">Follow Mode</h3>
+      <p class="doc-p">Instead of planning a path, you can point the camera at a layer and let it track that layer's motion — useful when the object you want to follow is itself animated.</p>
+      <ul class="doc-ul">
+        <li><strong>Target</strong> — which layer to follow.</li>
+        <li><strong>Screen X / Screen Y</strong> — where in the frame the object should sit, from 0 (left/top) to 1 (right/bottom). Set X to 0.3 to keep a moving object on the left third of the screen with room ahead of it.</li>
+        <li><strong>Smoothing</strong> — how lazily the camera catches up, in seconds. 0 locks on instantly; higher values give a heavier, floatier camera.</li>
+        <li><strong>Zoom</strong> — 0 means "use the keyframe zoom", so a follow shot can still be part of a keyframed journey.</li>
+      </ul>
+      <p class="doc-p">Follow is evaluated from the same clock as the drawing, so what you preview is exactly what gets exported — no dependence on frame rate.</p>
+
+      <hr class="doc-hr">
+
+      <h3 class="doc-h3" id="cam-scenes">Scenes and the Minimap</h3>
+      <p class="doc-p">Scenes are named regions of your world. They are navigation aids for you, not separate files: an animation can start in scene 1 and travel continuously to scene 3 in one shot, which is exactly what the demo does. Add a scene at the current view, name it, and jump to it from the list.</p>
+      <p class="doc-p">The minimap shows the whole composition and where your camera currently is — the only practical way to stay oriented when your content is spread across thousands of units.</p>
+
+      <hr class="doc-hr">
+
+      <h3 class="doc-h3" id="cam-demo">The Built-In 3-Scene Demo</h3>
+      <p class="doc-p">Open the <strong>Camera</strong> tab, expand <strong>Scenes</strong>, and press <strong>✦ Load 3-scene demo</strong>. It builds the entire composition procedurally — no assets to download.</p>
+      <ol class="doc-ol">
+        <li><strong>The point</strong> — a golden dot appears at world x 80 and travels right along a motion path.</li>
+        <li><strong>The reveal</strong> — the camera follows it, then settles on a diagram 2 400 units away, which the Inkplainer hand draws and reveals line by line.</li>
+        <li><strong>The journey</strong> — the camera pulls back and continues to the final destination at x 4 400.</li>
+      </ol>
+      <p class="doc-p">Press <strong>Generate</strong> to play it. For comparison, switch <strong>Follow</strong> on in the camera panel: the camera will then track the dot instead of following the keyframed path.</p>
+
+      <hr class="doc-hr">
+
+      <h3 class="doc-h3" id="cam-export">Exporting Through the Camera</h3>
+      <p class="doc-p">Video export renders exactly what the preview shows — the whole animation, seen through the animated camera. Two details matter:</p>
+      <ul class="doc-ul">
+        <li>The export now waits for the <strong>camera timeline</strong> to finish, not just the drawing. A camera move that outlasts the drawing no longer truncates the file.</li>
+        <li>Frames are stamped from a fixed 30 fps time base, so the exported duration matches the preview even if the device dropped frames while rendering.</li>
+      </ul>
+      <p class="doc-p">The grid and frame outline are never recorded, and the final-frame PNG export shows exactly the frame the camera is looking at.</p>
+    </div>
+
+    <!-- ═══ SECTION 8 ═══ -->
+    <div class="doc-section" id="s8">
+      <div class="section-eyebrow">Section 8</div>
+      <h2 class="section-title"><div class="section-num">8</div> Generating and Exporting</h2>
 
       <h3 class="doc-h3" id="generate">The Generate Button</h3>
       <p class="doc-p">The <strong>Generate</strong> button is pinned at the bottom of the left sidebar. Clicking it reads all your layers and their settings, builds the animation from scratch, and begins playing it on the canvas.</p>

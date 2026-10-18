@@ -86,7 +86,7 @@ function runScriptFile(rel) {
 }
 
 // jsdom does not fetch <script src>, so run the local ones by hand (in order).
-for (const f of ['camera.js', 'animations.js', 'world.js', 'demo.js']) {
+for (const f of ['camera.js', 'animations.js', 'world.js', 'demo.js', 'vendor/mp4-muxer.js']) {
   try { runScriptFile(f); } catch (e) { errors.push(`loading ${f}: ${e.stack || e}`); }
 }
 
@@ -423,6 +423,15 @@ group('K. Export');
   try { await win.recordWebM({ textContent: '' }, { style: {} }); } catch (e) { rejected = true; }
   ok(rejected || typeof win.MediaRecorder === 'undefined',
     'recordWebM refuses to fake success when MediaRecorder is unavailable');
+
+  // MP4: the muxer is vendored locally, so no network access is involved.
+  ok(typeof win.Mp4Muxer === 'object' && typeof win.Mp4Muxer.Muxer === 'function',
+    'the vendored mp4-muxer script loads and exposes Muxer (offline MP4)');
+  ok(typeof win.Mp4Muxer.ArrayBufferTarget === 'function', 'the vendored muxer exposes ArrayBufferTarget');
+  let mp4Msg = '';
+  try { await win.recordMP4({ textContent: '' }, { style: {} }); } catch (e) { mp4Msg = String(e.message || e); }
+  ok(/WebCodecs|VideoEncoder|muxer/i.test(mp4Msg),
+    `recordMP4 fails with an honest explanation instead of a silent no-op: "${mp4Msg.slice(0, 90)}"`);
 
   errors.length = 0;
   await win.exportPNG();

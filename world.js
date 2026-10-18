@@ -1285,14 +1285,20 @@
           reject(new Error('WebCodecs VideoEncoder is not available in this browser. Use WebM instead.'));
           return;
         }
+        // The muxer is vendored in vendor/mp4-muxer.js (MIT, v5.2.2) so MP4
+        // export works with no network at all.  It is loaded as a plain
+        // script, so it also works from file:// where ESM imports are blocked.
         let Muxer, ArrayBufferTarget;
         try {
-          const mod = await import('https://cdn.jsdelivr.net/npm/mp4-muxer@5.2.2/build/mp4-muxer.mjs');
-          Muxer = mod.Muxer || (mod.default && mod.default.Muxer);
-          ArrayBufferTarget = mod.ArrayBufferTarget || (mod.default && mod.default.ArrayBufferTarget);
-          if (!Muxer) throw new Error('Muxer not found in module exports');
+          const mod = window.Mp4Muxer || (typeof Mp4Muxer !== 'undefined' ? Mp4Muxer : null);
+          Muxer = mod && mod.Muxer;
+          ArrayBufferTarget = mod && mod.ArrayBufferTarget;
+          if (!Muxer || !ArrayBufferTarget) {
+            throw new Error('vendor/mp4-muxer.js did not load');
+          }
         } catch (importErr) {
-          reject(new Error('Could not load the MP4 muxer. Check your internet connection, or export WebM instead. (' + importErr.message + ')'));
+          reject(new Error('MP4 muxer is not available (' + importErr.message + '). ' +
+            'Make sure vendor/mp4-muxer.js sits next to index.html, or export WebM instead.'));
           return;
         }
 

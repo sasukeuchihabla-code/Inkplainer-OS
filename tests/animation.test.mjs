@@ -65,7 +65,7 @@ const win = dom.window;
 const doc = win.document;
 
 const realTimeoutForBoot = win.setTimeout.bind(win);
-for (const f of ['camera.js', 'animations.js', 'world.js', 'demo.js']) {
+for (const f of ['camera.js', 'animations.js', 'world.js', 'demo.js', 'vendor/mp4-muxer.js']) {
   const s = doc.createElement('script');
   s.textContent = fs.readFileSync(path.join(ROOT, f), 'utf8');
   doc.body.appendChild(s);
