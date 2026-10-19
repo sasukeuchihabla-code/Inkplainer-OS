@@ -1,0 +1,2 @@
+Tells GitHub Pages to serve these files exactly as they are, without running
+Jekyll over them (faster builds, and nothing gets rewritten).

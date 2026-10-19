@@ -2046,25 +2046,45 @@ input[type="number"]:focus { border-color: var(--accent); }
 
 #canvas-wrapper {
   position: relative;
+  /* The wrapper IS the editor viewport: it fills the canvas area and the
+     canvases inside are stretched over it.  The camera decides what part of
+     the world is shown — the canvas is never resized to fit content. */
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
   border-radius: 6px;
+  background: #ffffff;
   box-shadow:
     0 0 0 1px var(--border-hi),
     0 0 0 4px rgba(0,0,0,0.05),
     0 24px 60px rgba(0,0,0,0.14),
     0 8px 20px rgba(0,0,0,0.08);
   overflow: hidden;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 #canvas-wrapper.mode-select { cursor: default; }
 #canvas-wrapper.mode-select.over-handle { cursor: nwse-resize; }
+#canvas-wrapper.nav-mode, #canvas-wrapper.nav-mode * { cursor: grab !important; }
+#canvas-wrapper.nav-mode:active, #canvas-wrapper.nav-mode:active * { cursor: grabbing !important; }
 
-#main-canvas { display: block; background: white; }
-
-#select-canvas {
+#main-canvas,
+#select-canvas,
+#crop-canvas,
+#outline-overlay {
   position: absolute;
   top: 0; left: 0;
-  width: 100%; height: 100%;
-  pointer-events: none;
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
 }
+#main-canvas { background: transparent; }
+#select-canvas { pointer-events: auto; }
+#outline-overlay { z-index: 140; }
 
 /* Canvas overlay labels */
 #canvas-size-display { display: none; } /* Moved to topbar */
@@ -3250,15 +3270,315 @@ input[type="number"]:focus { border-color: var(--accent); }
     min-height: 100vh;
     overflow: auto;
   }
-  #desktop-only-notice { display: flex; }
-  #topbar,
-  #sidebar,
-  #main,
-  #right-panel,
-  #projects-modal,
-  #export-banner,
-  #welcome-overlay,
-  #slicer-modal { display: none !important; }
+  body:not(.mobile-continue) #desktop-only-notice { display: flex; }
+  body:not(.mobile-continue) #topbar,
+  body:not(.mobile-continue) #sidebar,
+  body:not(.mobile-continue) #main,
+  body:not(.mobile-continue) #right-panel,
+  body:not(.mobile-continue) #projects-modal,
+  body:not(.mobile-continue) #export-banner,
+  body:not(.mobile-continue) #welcome-overlay,
+  body:not(.mobile-continue) #slicer-modal { display: none !important; }
+}
+
+/* ── Phone layout (chosen from the notice below) ────────────────────────────
+   Inkplainer hid itself completely under 900 px.  That is the right default
+   for a three-pane desktop editor, but it made the app impossible to use on
+   the only device some people have.  With .mobile-continue the same UI is
+   stacked: top bar, then the canvas, then the two panels below it.  Nothing
+   is removed or redesigned - it is one page you scroll. */
+@media (max-width: 899px) {
+  body.mobile-continue { height: auto; min-height: 100vh; overflow-y: auto; }
+  body.mobile-continue #desktop-only-notice { display: none !important; }
+  body.mobile-continue #app-body { flex-direction: column; overflow: visible; }
+  body.mobile-continue #main { overflow: visible; min-width: 0; }
+  body.mobile-continue #sidebar,
+  body.mobile-continue #right-panel {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    max-height: none;
+    overflow: visible;
+    border-right: none;
+    border-left: none;
+    border-bottom: 1px solid var(--border);
+    order: 2;
+  }
+  body.mobile-continue #main { order: 1; }
+  body.mobile-continue #canvas-area { min-height: 56vh; padding: 8px; }
+  body.mobile-continue #canvas-wrapper { min-height: 50vh; }
+  body.mobile-continue #topbar { position: sticky; top: 0; }
+}
+
+.desktop-only-continue {
+  width: 100%;
+  padding: 11px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  color: #fff;
+  background: var(--accent);
+  border: none;
+  border-radius: 9px;
+  cursor: pointer;
+  margin-top: 4px;
+}
+.desktop-only-continue:hover { background: #000; }
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   INFINITE CANVAS — camera toolbar + camera panel
+   Kept deliberately compact: on a 360 px-wide phone the toolbar wraps into
+   two rows and every button stays at least 34 px tall (touch target).
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Floating camera toolbar (over the canvas, top-right) ── */
+#cam-toolbar {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 200;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+  max-width: calc(100% - 20px);
+  padding: 5px;
+  background: rgba(255,255,255,0.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-hi);
+  border-radius: 10px;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.10);
+}
+.cam-tb-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.cam-tb-sep { width: 1px; height: 20px; background: var(--border-hi); margin: 0 3px; }
+.cam-btn {
+  min-width: 34px;
+  height: 34px;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  color: var(--muted-hi);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  white-space: nowrap;
+}
+.cam-btn:hover { background: var(--surface-2); color: var(--text); }
+.cam-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.cam-btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+#cam-zoom-readout {
+  min-width: 46px;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  color: var(--text);
+  text-align: center;
+  cursor: pointer;
+}
+
+/* ── Zoom readout HUD (bottom-left of the canvas) ── */
+#cam-hud {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  z-index: 190;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 4px 9px;
+  background: rgba(255,255,255,0.9);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--border-hi);
+  border-radius: 8px;
+  font-size: 10px;
+  color: var(--muted-hi);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+#cam-hud b { color: var(--text); font-weight: 600; }
+
+/* ── Camera panel (lives in the left sidebar as a third tab) ── */
+.cam-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 7px;
+  font-size: 11px;
+  color: var(--muted-hi);
+}
+.cam-row > label { flex: 0 0 auto; min-width: 62px; }
+.cam-row input[type=range] { flex: 1; min-width: 0; height: 4px; }
+.cam-row select,
+.cam-row input[type=number] {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  padding: 5px 6px;
+  background: var(--panel);
+  border: 1px solid var(--border-hi);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: inherit;
+  outline: none;
+}
+.cam-val {
+  flex: 0 0 auto;
+  min-width: 42px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-size: 10px;
+  color: var(--muted);
+}
+.cam-btn-wide {
+  width: 100%;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--border-hi);
+  background: var(--panel);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.cam-btn-wide:hover { border-color: var(--accent); }
+.cam-btn-wide.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.cam-btn-wide.playing { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+.cam-btn-row { display: flex; gap: 5px; margin-bottom: 6px; }
+.cam-btn-row .cam-btn-wide { margin-bottom: 0; }
+
+/* keyframe list */
+.cam-empty {
+  font-size: 10px;
+  color: var(--muted);
+  padding: 8px 2px;
+  line-height: 1.45;
+}
+#cam-key-list, #cam-scene-list { max-height: 168px; overflow-y: auto; margin-bottom: 6px; }
+.cam-key {
+  display: grid;
+  grid-template-columns: 34px 1fr 40px 44px;
+  grid-template-areas: "t pos z e" "seg seg seg acts";
+  gap: 2px 4px;
+  align-items: center;
+  padding: 5px 6px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  margin-bottom: 4px;
+  background: var(--surface-1);
+  cursor: pointer;
+  font-size: 10px;
+  color: var(--muted-hi);
+}
+.cam-key.selected { border-color: var(--accent); background: var(--accent-lo); }
+.cam-key-t   { grid-area: t; font-variant-numeric: tabular-nums; color: var(--text); font-weight: 600; }
+.cam-key-pos { grid-area: pos; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cam-key-z   { grid-area: z; text-align: right; font-variant-numeric: tabular-nums; }
+.cam-key-e   { grid-area: e; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cam-key-seg { grid-area: seg; color: var(--muted); font-size: 9px; }
+.cam-key-acts{ grid-area: acts; display: flex; gap: 3px; justify-content: flex-end; }
+.cam-key .cam-key-acts { display: none; }
+.cam-key:hover .cam-key-acts, .cam-key.selected .cam-key-acts { display: flex; }
+.cam-key-btn {
+  width: 20px; height: 20px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border-hi);
+  border-radius: 5px;
+  background: var(--surface-1);
+  color: var(--muted-hi);
+  font-size: 10px;
+  cursor: pointer;
+  padding: 0;
+}
+.cam-key-btn:hover { border-color: var(--accent); color: var(--text); }
+.cam-key-btn.danger:hover { border-color: var(--accent2); color: var(--accent2); }
+
+/* scene list */
+.cam-scene {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 5px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  margin-bottom: 4px;
+  background: var(--surface-1);
+}
+.cam-scene-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  padding: 3px 5px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: var(--text);
+  font-family: inherit;
+}
+.cam-scene-name:hover { border-color: var(--border-hi); }
+.cam-scene-t { font-size: 9px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* minimap */
+#cam-minimap {
+  width: 100%;
+  height: 128px;
+  display: block;
+  border: 1px solid var(--border-hi);
+  border-radius: 8px;
+  background: #f4f4f6;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+/* toggle (reuses the app's toggle look) */
+.cam-toggle {
+  width: 34px; height: 19px;
+  border-radius: 100px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-hi);
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.cam-toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 13px; height: 13px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  transition: transform 0.15s;
+}
+.cam-toggle.on { background: var(--accent); border-color: var(--accent); }
+.cam-toggle.on::after { transform: translateX(15px); }
+
+/* ── narrow screens ── */
+@media (max-width: 720px) {
+  #canvas-area { padding: 8px; }
+  #cam-toolbar { top: 6px; right: 6px; gap: 3px; padding: 4px; }
+  .cam-btn { min-width: 32px; height: 32px; padding: 0 6px; }
+  #cam-hud { left: 6px; bottom: 6px; font-size: 9px; padding: 3px 7px; }
+  #cam-minimap { height: 104px; }
 }
 
 </style>
@@ -3270,8 +3590,34 @@ input[type="number"]:focus { border-color: var(--accent); }
     <p>This is a canvas-based animation editor with side panels, drag controls, video recording, and project storage. Please open it on a laptop or desktop screen for the full app.</p>
         
     <p>Please open Inkplainer on a laptop or desktop screen for the full app.</p>
+
+    <button class="desktop-only-continue" onclick="continueOnMobile()">Continue anyway on this screen →</button>
+    <p style="font-size:12px;color:var(--muted);margin:12px 0 0;line-height:1.55;">
+      On a phone the panels stack above and below the canvas &mdash; usable, but
+      you will scroll a lot. Video export needs <strong>Chrome or Edge over
+      HTTPS</strong>. Your choice is remembered on this device.
+    </p>
       </div>
 </div>
+<script>
+/* The notice above is the app's default for narrow screens.  Continue anyway
+   keeps the same UI, just stacked vertically, and remembers the choice. */
+(function () {
+  var KEY = 'inkMobileContinue';
+  try { if (localStorage.getItem(KEY) === '1') document.body.classList.add('mobile-continue'); } catch (e) {}
+  window.continueOnMobile = function continueOnMobile() {
+    document.body.classList.add('mobile-continue');
+    try { localStorage.setItem(KEY, '1'); } catch (e) {}
+    // Let the new layout settle, then re-fit the viewport canvases to it.
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        try { if (typeof fitCanvas === 'function') fitCanvas(); } catch (e) {}
+        try { if (typeof renderCameraUI === 'function') renderCameraUI(); } catch (e) {}
+      });
+    });
+  };
+})();
+</script>
 
 
 
@@ -3438,6 +3784,10 @@ input[type="number"]:focus { border-color: var(--accent); }
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
         Drawing
       </button>
+      <button class="sidebar-tab-btn" id="stab-camera" onclick="switchSidebarTab('camera')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        Camera
+      </button>
     </div>
   </div>
 
@@ -3503,6 +3853,176 @@ input[type="number"]:focus { border-color: var(--accent); }
     </div>
 
   </div><!-- /sidebar-pane-animation -->
+
+  <!-- ════ TAB: CAMERA (infinite canvas) ════ -->
+  <div class="sidebar-tab-pane" id="sidebar-pane-camera">
+
+    <div class="sidebar-section-label">World Navigation</div>
+
+    <!-- CARD: View -->
+    <div class="card">
+      <div class="card-header" onclick="toggleCard(this)">
+        <div class="card-header-label">View</div>
+        <span class="card-chevron">▾</span>
+      </div>
+      <div class="card-body">
+        <div class="cam-btn-row">
+          <button class="cam-btn-wide" onclick="camHome()" title="Return to the home view">⌂ Home</button>
+          <button class="cam-btn-wide" onclick="camFitAll()" title="Zoom out until every layer is visible">⤢ Fit all</button>
+        </div>
+        <div class="cam-btn-row">
+          <button class="cam-btn-wide" onclick="camCenterSelected()" title="Centre the camera on the selected layer">◎ Centre selection</button>
+          <button class="cam-btn-wide" onclick="camSetHome()" title="Save the current view as Home">⌂ Set home</button>
+        </div>
+        <div class="cam-row">
+          <label>Zoom</label>
+          <button class="cam-btn" style="flex:0 0 auto" onclick="camZoomButton(1/1.25)" title="Zoom out">−</button>
+          <span class="cam-val" data-cam="zoom">100%</span>
+          <button class="cam-btn" style="flex:0 0 auto" onclick="camZoomButton(1.25)" title="Zoom in">+</button>
+        </div>
+        <div class="cam-row">
+          <label>Grid</label>
+          <div class="cam-toggle on" id="btn-cam-grid" onclick="camToggleGrid()" title="World-space grid"></div>
+          <label style="min-width:auto;margin-left:10px">Frame</label>
+          <div class="cam-toggle on" id="btn-cam-frame" onclick="camToggleFrame()" title="Outline of the exported frame"></div>
+        </div>
+        <div class="cam-row" style="color:var(--muted);font-size:10px;line-height:1.5">
+          Drag empty space to pan · pinch or scroll to zoom · switch to the hand
+          tool to pan anywhere.
+        </div>
+      </div>
+    </div>
+
+    <!-- CARD: Minimap -->
+    <div class="card">
+      <div class="card-header" onclick="toggleCard(this)">
+        <div class="card-header-label">World Map</div>
+        <span class="card-chevron">▾</span>
+      </div>
+      <div class="card-body">
+        <canvas id="cam-minimap"></canvas>
+        <div class="cam-row" style="color:var(--muted);font-size:10px;margin-top:6px;margin-bottom:0">
+          Tap or drag to move the camera. Red dots are camera keyframes.
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-section-label">Camera Timeline</div>
+
+    <!-- CARD: Camera keyframes -->
+    <div class="card">
+      <div class="card-header" onclick="toggleCard(this)">
+        <div class="card-header-label">Camera Keyframes</div>
+        <span class="card-chevron">▾</span>
+      </div>
+      <div class="card-body">
+        <button class="cam-btn-wide primary" id="cam-preview-btn" onclick="camPreviewToggle()">▶ Preview camera</button>
+        <div class="cam-row">
+          <input type="range" id="cam-scrub" min="0" max="1000" value="0"
+            oninput="camScrubFromSlider(this)" style="flex:1">
+          <span class="cam-val" data-cam="time">0.00s</span>
+        </div>
+        <div class="cam-btn-row">
+          <button class="cam-btn-wide" onclick="camAddKey()">+ Key</button>
+          <button class="cam-btn-wide" onclick="camUpdateKey()">⟳ Update</button>
+          <button class="cam-btn-wide" onclick="camDuplicateKey()">⧉ Dup</button>
+          <button class="cam-btn-wide" onclick="camDeleteKey()">✕ Del</button>
+        </div>
+        <div class="cam-row">
+          <label>Easing</label>
+          <select id="cam-key-ease" onchange="camUpdateKey()">
+            <option value="linear">Linear</option>
+            <option value="easeIn">Ease in</option>
+            <option value="easeOut">Ease out</option>
+            <option value="easeInOut" selected>Ease in-out</option>
+            <option value="expoOut">Expo out</option>
+            <option value="backOut">Back out</option>
+          </select>
+        </div>
+        <div class="cam-row">
+          <label>Key time</label>
+          <input type="number" id="cam-key-time" min="0" step="0.1" value="0" onchange="camUpdateKey()">
+          <span class="cam-val">sec</span>
+        </div>
+        <div id="cam-key-list"></div>
+        <div class="cam-btn-row">
+          <button class="cam-btn-wide" onclick="camPreviewReset()">⏮ Rewind</button>
+          <button class="cam-btn-wide" onclick="camClearKeys()">Clear keys</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CARD: Follow target -->
+    <div class="card collapsed">
+      <div class="card-header" onclick="toggleCard(this)">
+        <div class="card-header-label">Follow Target</div>
+        <span class="card-chevron">▾</span>
+      </div>
+      <div class="card-body">
+        <div class="cam-row">
+          <label>Follow</label>
+          <div class="cam-toggle" id="cam-follow-toggle" onclick="camToggleFollow()"></div>
+          <span style="flex:1"></span>
+          <button class="cam-btn-wide" style="width:auto;padding:0 10px;height:28px;margin:0" onclick="renderCameraUI()">Refresh</button>
+        </div>
+        <div class="cam-row">
+          <label>Target</label>
+          <select id="cam-follow-target" onchange="camFollowChanged(this)"></select>
+        </div>
+        <div class="cam-row">
+          <label>Screen X</label>
+          <input type="range" id="cam-follow-x" min="0" max="1" step="0.01" value="0.5"
+            oninput="camFollowNum(this,'screenX')">
+          <span class="cam-val" id="cam-follow-screenX-val">50%</span>
+        </div>
+        <div class="cam-row">
+          <label>Screen Y</label>
+          <input type="range" id="cam-follow-y" min="0" max="1" step="0.01" value="0.5"
+            oninput="camFollowNum(this,'screenY')">
+          <span class="cam-val" id="cam-follow-screenY-val">50%</span>
+        </div>
+        <div class="cam-row">
+          <label>Smoothing</label>
+          <input type="range" id="cam-follow-smooth" min="0" max="1.5" step="0.05" value="0.25"
+            oninput="camFollowNum(this,'smoothing')">
+          <span class="cam-val" id="cam-follow-smoothing-val">0.25s</span>
+        </div>
+        <div class="cam-row">
+          <label>Zoom</label>
+          <input type="range" id="cam-follow-zoom" min="0" max="6" step="0.05" value="0"
+            oninput="camFollowZoom(this)">
+          <span class="cam-val" id="cam-follow-zoom-val">auto</span>
+        </div>
+        <div class="cam-row" style="color:var(--muted);font-size:10px;line-height:1.5;margin-bottom:0">
+          Zoom 0 = use the keyframe zoom. Smoothing 0 = lock on instantly.
+        </div>
+      </div>
+    </div>
+
+    <!-- CARD: Scenes -->
+    <div class="card collapsed">
+      <div class="card-header" onclick="toggleCard(this)">
+        <div class="card-header-label">Scenes</div>
+        <span class="card-chevron">▾</span>
+      </div>
+      <div class="card-body">
+        <button class="cam-btn-wide" onclick="camAddScene()">+ Add scene at current view</button>
+        <div class="cam-row">
+          <label>Timeline</label>
+          <input type="range" id="cam-duration" min="1" max="60" step="0.5" value="8"
+            oninput="camDurationChanged(this)">
+          <span class="cam-val" id="cam-duration-val">8.0s</span>
+        </div>
+        <div id="cam-scene-list"></div>
+        <button class="cam-btn-wide" id="btn-load-demo" onclick="loadDemoJourney()">✦ Load 3-scene demo</button>
+        <div class="cam-row" style="color:var(--muted);font-size:10px;line-height:1.5;margin-bottom:0">
+          The demo builds one continuous world: a golden point travels right,
+          the camera follows it, then the hand draws a diagram it reveals.
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /sidebar-pane-camera -->
 
   <!-- ════ TAB: DRAWING ════ -->
   <div class="sidebar-tab-pane" id="sidebar-pane-drawing">
@@ -3933,6 +4453,56 @@ input[type="number"]:focus { border-color: var(--accent); }
       <span id="anim-style-label">Scanner</span>
       <span id="done-badge" class="done-badge">Done</span>
       <canvas id="outline-overlay" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;opacity:1;display:none;"></canvas>
+
+      <!-- ══ INFINITE CANVAS: camera toolbar ══ -->
+      <div id="cam-toolbar">
+        <div class="cam-tb-group">
+          <button class="cam-btn" id="btn-tool-select" onclick="camSetTool('select')" title="Select / move objects">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51z"/></svg>
+          </button>
+          <button class="cam-btn" id="btn-tool-nav" onclick="camSetTool('nav')" title="Pan the camera (drag anywhere)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-4 0M14 10V4a2 2 0 0 0-4 0v2M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg>
+          </button>
+        </div>
+        <div class="cam-tb-sep"></div>
+        <div class="cam-tb-group">
+          <button class="cam-btn" onclick="camZoomButton(1/1.3)" title="Zoom out">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+          <span class="cam-btn" id="cam-zoom-readout" data-cam="zoom" onclick="camZoomReset()" title="Reset zoom to 100%">100%</span>
+          <button class="cam-btn" onclick="camZoomButton(1.3)" title="Zoom in">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+        </div>
+        <div class="cam-tb-sep"></div>
+        <div class="cam-tb-group">
+          <button class="cam-btn" onclick="camHome()" title="Home camera">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          </button>
+          <button class="cam-btn" onclick="camFitAll()" title="Fit all content">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+          </button>
+          <button class="cam-btn" onclick="camCenterSelected()" title="Centre on selected layer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="9"/><line x1="12" y1="1" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="23"/><line x1="1" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="23" y2="12"/></svg>
+          </button>
+        </div>
+        <div class="cam-tb-sep"></div>
+        <div class="cam-tb-group">
+          <button class="cam-btn active" id="btn-cam-grid" onclick="camToggleGrid()" title="World grid">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+          </button>
+          <button class="cam-btn active" id="btn-cam-frame" onclick="camToggleFrame()" title="Exported frame outline">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="4" y1="2" x2="20" y2="22" stroke-dasharray="3 3"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- ══ INFINITE CANVAS: camera HUD ══ -->
+      <div id="cam-hud">
+        <span>Zoom <b data-cam="zoom">100%</b></span>
+        <span>World <b data-cam="pos">0, 0</b></span>
+        <span>t <b data-cam="time">0.00s</b></span>
+      </div>
     </div>
 
     <!-- Crop action bar -->
@@ -4397,6 +4967,10 @@ function saveProject(projectId = currentProjectId) {
         canvasBg: state.canvasBg,
         _currentRatio: _currentRatio,
         _currentRes: _currentRes,
+        // ── Infinite canvas: camera pose, keyframes, scenes, follow target ──
+        // Filled in by world.js; projects saved before this existed simply
+        // have no such keys and fall back to the defaults on load.
+        ...(typeof inkSerializeWorld === 'function' ? inkSerializeWorld() : {}),
         
         // Layers with image data
         layers: state.layers ? state.layers.map((layer, index) => ({
@@ -4434,6 +5008,13 @@ function saveProject(projectId = currentProjectId) {
           // Text layer properties
           kind: layer.kind,
           textProps: layer.textProps,
+          // ── infinite canvas layer extras (shape layers, motion paths) ──
+          shape: layer.shape,
+          fill: layer.fill,
+          stroke: layer.stroke,
+          strokeWidth: layer.strokeWidth,
+          radiusPct: layer.radiusPct,
+          motion: layer.motion ? JSON.parse(JSON.stringify(layer.motion)) : null,
         })) : [],
         
         selectedLayerId: state.selectedLayerId,
@@ -4515,6 +5096,11 @@ function loadProject(projectId) {
       state.canvasW = savedState.canvasW || 1280;
       state.canvasH = savedState.canvasH || 720;
       state.canvasBg = savedState.canvasBg || { type: 'solid', val: '#ffffff' };
+
+      // Restore the infinite-canvas state (camera, keyframes, scenes, follow).
+      // Projects saved before the camera existed simply have nothing here and
+      // keep the default view, which is identical to the old fixed canvas.
+      if (typeof inkRestoreWorld === 'function') inkRestoreWorld(savedState);
       
       // Restore animation and drawing settings
       state.animStyle = savedState.animStyle || 'chunkjump';
@@ -4613,6 +5199,13 @@ function loadProject(projectId) {
                 // Text layer properties
                 kind: layerData.kind || null,
                 textProps: layerData.textProps || null,
+                // ── infinite canvas extras (shape layers, motion paths) ──
+                shape: layerData.shape,
+                fill: layerData.fill,
+                stroke: layerData.stroke,
+                strokeWidth: layerData.strokeWidth,
+                radiusPct: layerData.radiusPct,
+                motion: layerData.motion || null,
               };
               
               state.layers.push(layer);
@@ -5017,6 +5610,8 @@ function _serializeState() {
     canvasBg: JSON.parse(JSON.stringify(state.canvasBg || { type:'solid', val:'#ffffff' })),
     _currentRatio,
     _currentRes,
+    // ── Infinite canvas state (see world.js) ──
+    ...(typeof inkSerializeWorld === 'function' ? inkSerializeWorld() : {}),
     animStyle: state.animStyle,
     hand: state.hand,
     zigzag: state.zigzag,
@@ -5057,6 +5652,14 @@ function _serializeState() {
       textAnimDir: layer.textAnimDir,
       textDrawStyle: layer.textDrawStyle,
       zigzag: layer.zigzag,
+      // ── infinite canvas layer extras (shape layers, motion paths) ──
+      kind: layer.kind || 'image',
+      shape: layer.shape,
+      fill: layer.fill,
+      stroke: layer.stroke,
+      strokeWidth: layer.strokeWidth,
+      radiusPct: layer.radiusPct,
+      motion: layer.motion ? JSON.parse(JSON.stringify(layer.motion)) : null,
     })),
   };
 }
@@ -5124,6 +5727,9 @@ function _applySnapshot(snap, label) {
   if (state.canvasBg) {
     selectBgPreset(null, state.canvasBg.type, state.canvasBg.val);
   }
+
+  // Restore the infinite-canvas state (camera, keyframes, scenes, follow)
+  if (typeof inkRestoreWorld === 'function') inkRestoreWorld(snap);
 
   // Sync global UI
   document.querySelectorAll('.anim-opt[data-anim]').forEach(el =>
@@ -5197,6 +5803,14 @@ function _applySnapshot(snap, label) {
           textAnimDir: ld.textAnimDir,
           textDrawStyle: ld.textDrawStyle,
           zigzag: ld.zigzag,
+          // ── infinite canvas extras (shape layers, motion paths) ──
+          kind: ld.kind || 'image',
+          shape: ld.shape,
+          fill: ld.fill,
+          stroke: ld.stroke,
+          strokeWidth: ld.strokeWidth,
+          radiusPct: ld.radiusPct,
+          motion: ld.motion || null,
           _origImg: origImg || undefined,
           _origX: ld.origX, _origY: ld.origY,
           _origW: ld.origW, _origH: ld.origH,
@@ -5670,6 +6284,11 @@ window.addEventListener('load', () => {
 </script>
 
 <!-- ════════════════════════════════════════════════════════════════════════
+     INFINITE CANVAS CAMERA (world / camera / timeline maths — no DOM)
+════════════════════════════════════════════════════════════════════════ -->
+<script src="camera.js"></script>
+
+<!-- ════════════════════════════════════════════════════════════════════════
      ANIMATION ENGINE (external module)
 ════════════════════════════════════════════════════════════════════════ -->
 <script src="animations.js"></script>
@@ -5808,6 +6427,12 @@ function initCanvas(w,h) {
     if (el) el.textContent = sizeText;
   }
   
+  // The hand graphics are fetched per canvas resolution (720/1080/1440 and the
+  // vertical variants).  Warm the set the new size needs.  Deferred by a tick
+  // because initCanvas() also runs during page start-up, before CUSTOM_HANDS
+  // has been defined.
+  if (typeof loadCustomHandImages === 'function') setTimeout(loadCustomHandImages, 0);
+
   redrawLayersOnCanvas();
 }
 function fitCanvas() {
@@ -6319,7 +6944,7 @@ function _allLayersDone() {
       } else {
         fillBg(_mainCtx);
       }
-      if (state.bgCanvas) _mainCtx.drawImage(state.bgCanvas, 0, 0);
+      if (state.bgCanvas) inkDrawStageOn(_mainCtx, state.bgCanvas);
     } else {
       // Nothing is opting out of reveal — safe to draw every layer's raw image directly.
       state.bgCanvas = null;
@@ -6367,22 +6992,28 @@ function _allLayersDone() {
       const _tmpBg = state.bgCanvas; state.bgCanvas = null;
       fillBg(_mainCtx);
       state.bgCanvas = _tmpBg;
-      _mainCtx.drawImage(state.bgCanvas, 0, 0);
+      inkDrawStageOn(_mainCtx, state.bgCanvas);
     } else {
       fillBg(_mainCtx);
     }
     if (state._revealFinalCanvas && anyOutline && anyOutlineNoReveal) {
       _mainCtx.globalAlpha = t;
-      _mainCtx.drawImage(state._revealFinalCanvas, 0, 0);
+      inkDrawStageOn(_mainCtx, state._revealFinalCanvas);
+      _mainCtx.globalAlpha = 1;
     }
     if (!anyOutlineNoReveal) {
+      // Layers are drawn in WORLD space through the camera.
+      const _T = inkViewportTransform(_mainCtx);
+      _mainCtx.save();
+      InkCamera.applyCanvasTransform(_mainCtx, _T);
       _mainCtx.globalAlpha = t;
       state.layers.filter(l => l.visible !== false).forEach(l => {
         _mainCtx.save();
         _mainCtx.globalAlpha *= (l.opacity ?? 1);
-        _mainCtx.drawImage(l.img, l.x, l.y, l.w, l.h);
+        inkDrawLayerWorld(_mainCtx, l);
         _mainCtx.restore();
       });
+      _mainCtx.restore();
     }
     _mainCtx.restore();
     requestAnimationFrame(reveal);
@@ -6466,7 +7097,7 @@ function _buildLayerItem(layer) {
     <div class="layer-item-header" onclick="selectLayer(${layer.id})">
       <span class="layer-drag-handle" title="Drag to reorder">⠿</span>
       <button class="layer-eye-btn${isHidden ? ' hidden' : ''}" onclick="event.stopPropagation();toggleLayerVisibility(${layer.id})" title="Toggle visibility">${eyeIcon}</button>
-      <img class="layer-thumb" src="${layer.img.src}" alt="">
+      <img class="layer-thumb" src="${layer.img ? layer.img.src : ''}" alt="">
       <div style="flex:1;min-width:0">
         <div class="layer-name" title="${layer.name}">${layer.name}</div>
       </div>
@@ -8937,7 +9568,9 @@ function finishAnim() {
 
   // Suppress raw-image flash for non-reveal spec-text and outline-only modes
   if (!state.noFlashFinish && (_imageRevealOn || !_isOutlineStyle) && !_specTextNoReveal) {
-    ctx.save(); fillBg(ctx); ctx.drawImage(offscreen,0,0); ctx.restore();
+    // The offscreen is a STAGE buffer: blit it at its place in the world
+    // instead of at (0,0) of the output surface.
+    ctx.save(); fillBg(ctx); inkDrawStageOn(ctx, offscreen); ctx.restore();
   } else if (_specTextNoReveal) {
     // Composite the drawn strokes as the final frame (no raw image blit)
     ctx.save(); fillBg(ctx);
@@ -9144,26 +9777,36 @@ const CUSTOM_HANDS = {
 // Storage for loaded hand images
 const customHandImages = {};
 
-// Load all custom hand images for all resolutions
-function loadCustomHandImages() {
+// Which resolution key we have already requested.  Loading every hand at every
+// resolution meant 36 PNGs (~30 MB) on every page load — punishing on mobile
+// data, and hundreds of megabytes once decoded.  We now fetch only the
+// resolution the current canvas actually needs (6 images), and switch when the
+// canvas size or orientation changes.
+// `var`, not `let`: initCanvas() can call this before this line is reached,
+// and a `let` in its temporal dead zone would throw.
+var _handResRequested = null;
+
+function loadCustomHandImages(resOverride) {
+  const res = resOverride || getCurrentResolution();
+  if (res === _handResRequested) return;   // already requested for this size
+  _handResRequested = res;
   for (const [handId, handConfig] of Object.entries(CUSTOM_HANDS)) {
-    customHandImages[handId] = {};
-    
-    for (const [resolution, imageData] of Object.entries(handConfig.images)) {
-      const img = new Image();
-      img.onload = () => {
-        customHandImages[handId][resolution] = img;
-        console.log(`✓ Loaded ${handId} at ${resolution}p`);
-      };
-      img.onerror = () => {
-        console.error(`✗ Failed to load ${handId} at ${resolution}p from ${imageData.path}`);
-      };
-      img.src = imageData.path;
-    }
+    const imageData = handConfig.images[res];
+    if (!imageData) continue;
+    if (customHandImages[handId] && customHandImages[handId][res]) continue;
+    const img = new Image();
+    img.onload = () => {
+      customHandImages[handId] = customHandImages[handId] || {};
+      customHandImages[handId][res] = img;
+    };
+    img.onerror = () => {
+      console.error(`\u2717 Failed to load ${handId} at ${res} from ${imageData.path}`);
+    };
+    img.src = imageData.path;
   }
 }
 
-// Call this when the page loads
+// Load the hands for the current canvas size when the page loads
 setTimeout(loadCustomHandImages, 100);
 
 // Get the appropriate resolution key based on canvas dimensions and orientation
@@ -9194,8 +9837,19 @@ function drawCustomHand(c, hx, hy, tipX, tipY, style) {
   
   const resolution = getCurrentResolution();
   const imageConfig = handConfig.images[resolution];
-  const img = customHandImages[style] && customHandImages[style][resolution];
-  
+  let img = customHandImages[style] && customHandImages[style][resolution];
+
+  // The canvas was resized (or the first load has not finished yet): ask for
+  // this resolution and use any other one we already have in the meantime.
+  // Every hand image shares the same aspect ratio, so a fallback drawn at the
+  // current resolution's width/height lines up correctly.
+  if (!img && imageConfig) {
+    if (typeof loadCustomHandImages === 'function') loadCustomHandImages(resolution);
+    const loaded = customHandImages[style] || {};
+    const anyRes = Object.keys(loaded)[0];
+    img = anyRes ? loaded[anyRes] : null;
+  }
+
   if (!img || !imageConfig) {
     // Image not loaded - show error and fallback to marker
     c.save();
@@ -10525,6 +11179,17 @@ if (_layerListEl) {
 }
 
 </script>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     INFINITE CANVAS INTEGRATION — world coordinates, camera compositing,
+     navigation input, camera timeline, follow-target, scenes and a
+     camera-aware exporter. Loads last on purpose: it wraps functions
+     defined by the main application script above.
+════════════════════════════════════════════════════════════════════════ -->
+<script src="world.js"></script>
+<!-- Three-connected-scene demo composition (builds the world above) -->
+<script src="vendor/mp4-muxer.js"></script>
+<script src="demo.js"></script>
 
 <!-- ═══════════════════════════════════════════
      ONBOARDING — Welcome Modal + Tooltips

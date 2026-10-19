@@ -1,0 +1,27 @@
+{
+  "name": "inkplainer-os",
+  "version": "1.0.0",
+  "description": "**Free, open-source whiteboard animation maker that runs entirely in your browser.**",
+  "main": "animations.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sasukeuchihabla-code/Inkplainer-OS.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/sasukeuchihabla-code/Inkplainer-OS/issues"
+  },
+  "homepage": "https://github.com/sasukeuchihabla-code/Inkplainer-OS#readme",
+  "dependencies": {
+    "fake-indexeddb": "^6.2.6",
+    "jsdom": "^30.1.3"
+  }
+}

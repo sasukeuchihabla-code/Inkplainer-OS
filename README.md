@@ -14,6 +14,11 @@ Turn images and text into hand-drawn explainer videos — no sign-up, no waterma
 
 ## Features
 
+- **Infinite canvas with a real camera** — pan and zoom anywhere; content is no longer limited to the export frame. One continuous world with a grid, Home / Fit-All / centre-on-selection, and a live zoom readout
+- **Animated camera with keyframes** — plan a move (X, Y, zoom, optional rotation, time, easing) on a timeline, then preview, scrub, play, pause, duplicate and reset it. Zoom interpolates geometrically, so a 0.7×→1.7× push feels even
+- **Follow-target mode** — lock the camera onto a moving layer with a configurable screen position, damping and zoom; it plays back identically in the export
+- **Scenes and a navigator** — name regions of the world, jump between them, and see the whole composition in a minimap
+- **A built-in 3-scene demo** — one continuous story: a point travels right, the camera follows it, the hand draws and reveals a distant diagram, and the camera keeps going to the final destination
 - **Multiple animation styles** — Chunk Jump, Scanner, Contour, Outline Chunks, plus 7 subject-aware Specialized styles (Human, Animal, Portrait, Vehicle, Building, Landscape, Spiral)
 - **Advanced drawing control** — 5 stroke styles, 4 outline detection algorithms, 3 coloring styles, and 6 image reveal animations
 - **Layer system** — stack images and text layers, set animation order, animate them in sequence or in parallel
@@ -44,6 +49,13 @@ python3 -m http.server 8080
 
 Then open the serving local (e.g.,`http://localhost:8080`) in your preferred browser.
 
+> **On a phone.** Under 900 px wide the app shows a "works best on a desktop
+> browser" card, because a three-pane editor is cramped on a small screen.
+> Tap **Continue anyway on this screen** to use it: the same UI stacks
+> vertically (canvas first, panels below) and your choice is remembered.
+> Video export on a phone needs **Chrome or Edge over HTTPS** — see the note
+> below.
+
 A local static server is required (rather than opening `index.html` directly) due to browser CORS and Canvas security policies when processing images.
 
 > **Important (Hosting, HTTPS & Video Export):** Inkplainer uses the WebCodecs API for video recording and encoding. Browsers only enable WebCodecs in a **Secure Context** (HTTPS or `localhost`). If you host Inkplainer on a local network using plain HTTP (for example, `http://192.168.1.100:8080`) and access it from another device, **video export will not be available**.
@@ -56,16 +68,14 @@ A local static server is required (rather than opening `index.html` directly) du
 
 
 ### Offline / Air-Gapped Hosting
-Inkplainer relies on two external resources by default:
-1. **Google Fonts** (loaded via stylesheet links in `index.html`)
-2. **mp4-muxer** (imported dynamically from jsDelivr CDN when exporting to MP4)
+Inkplainer makes **no network requests at all**. The MP4 muxer used to be
+loaded from a CDN; it is now vendored at `vendor/mp4-muxer.js` (MIT, v5.2.2),
+so MP4 export works with the network switched off.
 
-If you need to run the application in a completely offline or air-gapped environment:
-- Download the Google Fonts stylesheet and font files, save them locally in the project, and update the `<link>` tags in `index.html`.
-- Download the `mp4-muxer.mjs` library file, save it inside the project (e.g. as `mp4-muxer.mjs`), and update the dynamic import in `index.html` (around line 9200):
-  ```javascript
-  const mod = await import('./mp4-muxer.mjs');
-  ```
+The one remaining external reference is **Google Fonts**, loaded from a
+`<link>` in `index.html`. The app falls back to system fonts automatically if
+it cannot be reached. To be fully self-contained, download the stylesheet and
+font files into the project and repoint those `<link>` tags.
 
 ---
 
@@ -85,6 +95,79 @@ Before touching any setting, it helps to understand how the app thinks about a p
 4. **Export** records the animation as a video file.
 
 When Generate runs, layers animate one after another in the order you define. As each layer finishes being drawn, it gets permanently baked into the background — it stays visible while the next layer animates on top of it.
+
+---
+
+### The Infinite Canvas and the Camera
+
+The canvas is no longer the size of your video — it is a boundless world, and
+the video frame is a window that moves through it.
+
+**Three coordinate spaces**
+
+| Space | Unit | Used for |
+|-------|------|----------|
+| **World** | 1 unit = 1 pixel of the export frame at zoom 1 | where your layers live; what gets saved |
+| **Stage** | the frame-sized buffer the drawing engine draws into | bounded, so memory never grows |
+| **Screen** | CSS pixels of the canvas you see | panning, zooming, touch |
+
+Old projects are unchanged: at zoom 1 with the camera centred, world
+coordinates are exactly the old canvas coordinates. Nothing is migrated; the
+camera simply starts there.
+
+**Moving around**
+
+| Action | Mouse / trackpad | Touch |
+|--------|------------------|-------|
+| Pan | drag with the **Navigate** tool, or hold `Space`, or middle-drag | one-finger drag with the Navigate tool |
+| Zoom | scroll wheel (keeps the point under the cursor) | pinch |
+| Zoom to 100 % | click the zoom readout | tap the zoom readout |
+| Home / Fit all / Centre on selection | buttons in the camera toolbar | same |
+
+The camera toolbar sits over the top-left of the canvas and holds: **Select**
+and **Navigate** tools, zoom out / readout / zoom in, Home, Fit-All,
+Centre-selection, and toggles for the world **grid** and the exported **frame
+outline**. A small HUD at the bottom shows zoom, world position and the
+timeline position.
+
+**Camera timeline (Camera tab in the left sidebar)**
+
+1. Move the camera where you want it and press **+ Add keyframe**.
+2. Move the playhead, move the camera again, add another keyframe.
+3. Pick an easing per keyframe — Linear, Ease In, Ease Out, Ease In-Out.
+4. Scrub, play, and edit (X, Y, zoom, time) directly in the key list.
+
+Zoom interpolates **geometrically** (0.7 → 1.0 → 1.4 rather than 0.7 → 1.0 →
+1.3), which is how a real dolly feels.
+
+**Follow mode** — point the camera at a layer and it tracks that layer's
+motion, holding it at the screen position you choose. `Smoothing` controls how
+lazily the camera catches up (0 = locked on). `Zoom 0` means "use the
+keyframe zoom", so a follow shot can still be part of a keyframed journey.
+
+**Scenes** — name regions of your world for your own navigation, jump to them
+from the scene list, and see the whole composition at once in the minimap.
+They are labels and destinations, not separate files: an animation can travel
+from scene 1 to scene 3 in one continuous shot, which is exactly what the
+built-in demo does.
+
+**The demo** — Camera tab → Scenes → **✦ Load 3-scene demo**. It builds the
+whole composition procedurally (no assets needed):
+
+1. **The point** — a golden dot appears at world x 80 and travels right.
+2. **The reveal** — the camera follows it, then settles on a diagram 2 400
+   units away, which the Inkplainer hand draws and reveals line by line.
+3. **The journey** — the camera continues to the final destination at x 4 400.
+
+Press **Generate** after loading it. Turn Follow **on** in the camera panel to
+see tracking instead of the keyframed move.
+
+**Exporting through the camera** — video export renders exactly what the
+preview shows: the whole animation, seen through the animated camera. The
+export waits for the camera timeline to finish, so a camera move that outlasts
+the drawing no longer truncates the file. Frames are stamped from a fixed
+30 fps time base, so the file duration matches the preview regardless of how
+many frames the device managed to render.
 
 ---
 
@@ -337,6 +420,20 @@ This is the tool used to set up the default hands included in the project. If yo
 inkplainer/
 ├── index.html                     # Main app UI, layout, and interaction logic
 ├── animations.js                  # All animation algorithms and rendering engine
+├── camera.js                      # Camera/world maths: transforms, keyframes,
+│                                  #   easing, follow, scenes, stage fitting
+│                                  #   (pure functions, no DOM, UMD)
+├── world.js                       # Integration layer: viewport, stage buffer,
+│                                  #   input, camera UI, export, serialisation
+├── demo.js                        # The built-in 3-scene demo composition
+├── vendor/
+│   └── mp4-muxer.js               # Vendored MP4 muxer (MIT) — offline export
+├── tests/
+│   ├── camera.test.mjs            # 131 checks on camera.js (no browser needed)
+│   ├── smoke.test.mjs             # 104 checks — boots the real index.html
+│   ├── animation.test.mjs         #  32 checks — real generate() + playback
+│   └── canvas-mock.mjs            # Recording canvas mock used by the two above
+├── TESTS.md                       # What is verified, and what is not
 ├── LICENSE                        # Apache 2.0
 ├── README.md                      # This file
 ├── PRIVACY.md                     # Privacy policy
@@ -348,6 +445,34 @@ inkplainer/
 └── pages/
     └── docs.html                  # Full user documentation page
 ```
+
+**Where the camera lives.** `camera.js` is pure maths (world → stage → screen
+transforms, keyframe interpolation, easing, follow damping, stage fitting) and
+knows nothing about the DOM, which is why it can be unit-tested on its own.
+`world.js` is the wiring: it owns the stage buffer, the input handling, the
+camera panel, the export path, and the save/restore of camera state.
+`animations.js` was patched so every drawing composite runs inside
+`inkBeginWorld()` / `inkEndWorld()`, which means the camera transform is
+applied exactly once.
+
+---
+
+## Testing
+
+```bash
+npm install jsdom fake-indexeddb     # dev-only; the app needs neither
+node tests/camera.test.mjs           # 131 checks
+node tests/smoke.test.mjs            # 115 checks
+node tests/animation.test.mjs        #  32 checks
+```
+
+278 checks, all passing. `smoke` and `animation` boot the real `index.html` in
+jsdom with a recording canvas mock and a deterministic clock.
+
+See [TESTS.md](TESTS.md) for exactly what each suite proves, what was verified
+only by inspection, and — honestly — what has **not** been tested and still
+needs a real device (touch feel, video export, and whether the picture looks
+right).
 
 ---
 
