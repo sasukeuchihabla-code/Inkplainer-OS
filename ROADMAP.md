@@ -1,13 +1,13 @@
 # Whiteboard Studio — Implementation Roadmap
 
-**Status:** M0 documentation is complete; M1 diagnostic Android scaffold and CI workflow are added, with build/device acceptance still pending. Milestones are gates, not date estimates. Complete a gate's acceptance tests before expanding scope; do not generate the full future product in one pass.
+**Status:** M0 documentation is complete; the M1 diagnostic shell has built and uploaded a debug APK in [CI run 39465491250](https://github.com/sasukeuchihabla-code/Inkplainer-OS/actions/runs/39465491250). The Infinix Hot 30 install/offline/touch checks remain pending. Milestones are gates, not date estimates. Complete a gate's acceptance tests before expanding scope; do not generate the full future product in one pass.
 
 ## Milestone map
 
 | ID | Milestone | Dependencies | Status |
 |---|---|---|---|
 | M0 | Feasibility, architecture, recipe contract | None | Complete for this phase; schema and sample validation passed locally |
-| M1 | Buildable offline Android shell | M0 | Scaffold/workflow added; CI APK build and Infinix Hot 30 checks pending |
+| M1 | Buildable offline Android shell | M0 | CI APK build/artifact passed; Infinix Hot 30 checks pending |
 | M2 | Native video-export feasibility spike | M1 | Not started; early architecture gate |
 | M3 | Versioned project model and safe local storage | M1 | Not started |
 | M4 | Phone-first static editor vertical slice | M3 | Not started |
@@ -35,11 +35,11 @@
 
 **Dependencies:** M0.
 
-**Scope:** create the smallest Kotlin Android project, Gradle wrapper, and public-repository GitHub Actions debug-APK workflow. A single packaged HTML page is enough; do not build editor controls yet. Load it from APK assets using `WebViewAssetLoader`, set up portrait layout, and keep runtime content local. **Scaffold status:** these files now exist; the workflow and actual APK remain unverified because this sandbox has no JDK/Android SDK.
+**Scope:** create the smallest Kotlin Android project, Gradle wrapper, and public-repository GitHub Actions debug-APK workflow. A single packaged HTML page is enough; do not build editor controls yet. Load it from APK assets using `WebViewAssetLoader`, set up portrait layout, and keep runtime content local. **Build status:** these files exist; GitHub Actions run [39465491250](https://github.com/sasukeuchihabla-code/Inkplainer-OS/actions/runs/39465491250) successfully assembled and uploaded a debug APK. The sandbox has no JDK/Android SDK/phone, so local compilation and on-device behavior are still unverified.
 
 **Tests and acceptance criteria:**
 
-1. `./gradlew assembleDebug` succeeds on the GitHub-hosted standard runner and stores a downloadable debug APK artifact. Keep workflow permissions read-only; do not publish secrets or release credentials.
+1. **Passed in CI:** the GitHub-hosted standard runner built the debug APK and uploaded the downloadable `whiteboard-studio-diagnostic-debug` artifact in [run 39465491250](https://github.com/sasukeuchihabla-code/Inkplainer-OS/actions/runs/39465491250). Keep workflow permissions read-only; do not publish secrets or release credentials.
 2. Install that APK on an Infinix Hot 30 running Android 13. Cold launch succeeds in airplane mode, the packaged page appears within 5 seconds on the test phone, and the app remains usable after a process restart.
 3. Confirm no remote page, font, script, analytics call, or CDN request is required. A local-only test page and all referenced assets load from the APK.
 4. Verify portrait sizing, WebView touch handling, Back behavior, and recreation after Activity pause/resume. Record device model, Android/WebView versions, APK size, startup time, and any permissions.
@@ -188,4 +188,4 @@
 
 ## Exact next implementation task
 
-**Close M1 by running and exercising the scaffold already added:** run `.github/workflows/android-debug.yml` on the active branch, download its debug-APK artifact, and install it on the Infinix Hot 30 in airplane mode. Record cold-start, touch, permission, WebView-version, and offline-origin results. This sandbox cannot run the Android build locally and has no phone attached, so M1 is not complete until those external checks pass. Do not add editor controls or export before then. If M1 passes, the next implementation gate is M2's five-second deterministic `MediaCodec`/`MediaMuxer` proof.
+**Finish the remaining M1 device checks before starting another milestone:** download the debug APK from [successful CI run 39465491250](https://github.com/sasukeuchihabla-code/Inkplainer-OS/actions/runs/39465491250), install it on the Infinix Hot 30 in airplane mode, and record cold-start, touch, permission, WebView-version, and offline-origin results. This sandbox cannot run the Android build locally and has no phone attached, so M1 is not complete until those external checks pass. Do not add editor controls, storage, or export at this stage. After M1 is fully accepted, the next implementation gate is M2's five-second deterministic `MediaCodec`/`MediaMuxer` proof.

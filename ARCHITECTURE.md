@@ -1,6 +1,6 @@
 # Whiteboard Studio — Architecture
 
-- **Status:** proposed architecture; M1 diagnostic Android shell scaffolded, product editor not implemented
+- **Status:** proposed architecture; M1 diagnostic Android shell built successfully in CI, target-phone test pending; product editor not implemented
 - **Updated:** 2026-10-20 (environment evidence captured 2026-10-19)
 - **Repository:** `Inkplainer-OS`; the existing browser editor is retained as a source of reusable ideas and assets.
 
@@ -36,9 +36,9 @@ Inspected on 2026-10-19 in the coding sandbox:
 - Not found: Java/JDK, Gradle or Gradle wrapper, Android SDK, `adb`, Android emulator/AVD tools, NDK, Docker/Podman, or FFmpeg. No connected Android device or emulator is exposed through this environment.
 - Repository baseline: approximately 57 MiB, no `package.json`, Gradle project, wrapper, or test suite. The current editor is a large HTML/JavaScript browser application with local image assets.
 - HTTPS checks to the permitted GitHub, GitHub API, codeload, and npm registry hosts returned HTTP 200. Sandbox egress is allow-listed; do not assume Google's Android SDK/Maven hosts are available here.
-- The GitHub repository was public at inspection. A standard GitHub-hosted runner is a practical **build-only** fallback for a public repository; GitHub documents standard runner usage for public repositories as free [2](https://docs.github.com/en/billing/concepts/product-billing/github-actions). The M1 Gradle shell and debug workflow have since been added, but the workflow has not run and no APK artifact exists.
+- The GitHub repository was public at inspection. A standard GitHub-hosted runner is a practical **build-only** fallback for a public repository; GitHub documents standard runner usage for public repositories as free [2](https://docs.github.com/en/billing/concepts/product-billing/github-actions). The M1 Gradle shell and debug workflow have since been added. CI run [39465491250](https://github.com/sasukeuchihabla-code/Inkplainer-OS/actions/runs/39465491250) successfully assembled and uploaded the debug APK; this is build evidence only, not an install or phone test.
 
-**Conclusion:** APK compilation is **not possible with the currently installed local toolchain**. This is an environment limitation, not evidence that Android packaging is infeasible. The repository now contains the Gradle wrapper and a GitHub Actions build workflow; the next step is to run that workflow and download its debug APK for installation on the phone. Keep CI independent of runtime app behavior. The local phone is the release/performance test device; cloud CI cannot replace that test.
+**Conclusion:** APK compilation is **not possible with the currently installed local toolchain**. This is an environment limitation, not evidence that Android packaging is infeasible. The GitHub Actions build workflow has produced a debug APK artifact in run [39465491250](https://github.com/sasukeuchihabla-code/Inkplainer-OS/actions/runs/39465491250). The remaining M1 gate is to install and exercise that artifact on the target phone. Keep CI independent of runtime app behavior; cloud CI cannot replace the local phone test.
 
 ## 3. Application modules and dependency rules
 

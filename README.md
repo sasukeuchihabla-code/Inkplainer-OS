@@ -2,7 +2,7 @@
 
 **Offline-first Android whiteboard animation editor — architecture and feasibility phase.**
 
-This repository currently contains the pre-existing Inkplainer browser editor. Whiteboard Studio is the planned mobile Android product described in the master specification; its Android application has **not** been implemented yet. The existing editor and assets are being preserved while the new project model, rendering contract, and build path are designed.
+This repository preserves the pre-existing Inkplainer browser editor. Whiteboard Studio is the planned mobile Android product described in the master specification; its M1 diagnostic Android shell is implemented and has built successfully in CI, but the phone-first editor and the rest of the product have **not** been implemented. The existing editor and assets are being preserved while the new project model, rendering contract, and build path are developed milestone by milestone.
 
 ## Current status
 
@@ -22,7 +22,7 @@ For the current static browser app, run `python3 -m http.server 8080` from the r
 
 The minimal M1 shell is configured for Android 13+ (`minSdk 33`, compile/target SDK 35). When a JDK and Android SDK are available, build it from the repository root with `./gradlew :app:assembleDebug`. The temporary app only verifies the packaged WebView origin and touch events; it is not the editor.
 
-The coding sandbox has no JDK, Android SDK, `adb`, or emulator, so a local APK build and device test are not available here. `.github/workflows/android-debug.yml` runs on pushes to `main`/`arena/**`, pull requests, or manual dispatch; it uploads a debug-signed, non-release APK artifact named `whiteboard-studio-diagnostic-debug` for 7 days. **The workflow has been added but has not yet been run; no APK has been tested on the phone.** The repository was public during inspection, making the standard GitHub-hosted runner the zero-cost build fallback.
+The coding sandbox has no JDK, Android SDK, `adb`, or emulator, so a local APK build and device test are not available here. `.github/workflows/android-debug.yml` runs on pushes to `main`/`arena/**`, pull requests, or manual dispatch; it uploads a debug-signed, non-release APK artifact named `whiteboard-studio-diagnostic-debug` for 7 days. **CI run [39465491250](https://github.com/sasukeuchihabla-code/Inkplainer-OS/actions/runs/39465491250) successfully assembled the APK and uploaded the artifact. This verifies the CI build only: no APK has been installed or tested on the phone.** The repository was public during inspection, making the standard GitHub-hosted runner the zero-cost build fallback.
 
 ### Target device and known limitations
 
