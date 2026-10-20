@@ -22,10 +22,12 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "17"
@@ -40,10 +42,34 @@ jobs:
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
       - name: Assemble debug APK
-        run: ./gradlew --no-daemon --stacktrace :app:assembleDebug
+        id: assemble
+        shell: bash
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon --stacktrace :app:assembleDebug 2>&1 | tee "$RUNNER_TEMP/gradle-assemble.log"
+
+      - name: Report Gradle failure context
+        if: failure()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          log = Path(os.environ["RUNNER_TEMP"]) / "gradle-assemble.log"
+          if not log.exists():
+              raise SystemExit(0)
+          message = "\n".join(log.read_text(errors="replace").splitlines()[-40:])[-4500:]
+          escaped = message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+          print(f"::error title=Gradle assemble failed::{escaped}")
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
+              summary.write("## Gradle assemble failure context\n\n```text\n")
+              summary.write(message)
+              summary.write("\n```\n")
+          PY
 
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: whiteboard-studio-diagnostic-debug
           path: app/build/outputs/apk/debug/app-debug.apk
