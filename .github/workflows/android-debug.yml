@@ -46,7 +46,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          ./gradlew --no-daemon --stacktrace :app:assembleDebug 2>&1 | tee "$RUNNER_TEMP/gradle-assemble.log"
+          ./gradlew --no-daemon --stacktrace --console=plain :app:assembleDebug 2>&1 | tee "$RUNNER_TEMP/gradle-assemble.log"
 
       - name: Report Gradle failure context
         if: failure()
@@ -54,12 +54,25 @@ jobs:
         run: |
           python3 - <<'PY'
           import os
+          import re
           from pathlib import Path
 
           log = Path(os.environ["RUNNER_TEMP"]) / "gradle-assemble.log"
           if not log.exists():
               raise SystemExit(0)
-          message = "\n".join(log.read_text(errors="replace").splitlines()[-40:])[-4500:]
+          lines = log.read_text(errors="replace").splitlines()
+          diagnostics = [
+              i for i, line in enumerate(lines)
+              if re.match(r"\s*[ew]:\s", line)
+              or re.search(r"\bFAILED\b|What went wrong:|Execution failed for task|Compilation error|^FAILURE:", line)
+          ]
+          if diagnostics:
+              selected = []
+              for i in diagnostics:
+                  selected.extend(lines[max(0, i - 1):min(len(lines), i + 5)])
+              message = "\n".join(dict.fromkeys(selected))[-4500:]
+          else:
+              message = "\n".join(lines[-50:])[-4500:]
           escaped = message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
           print(f"::error title=Gradle assemble failed::{escaped}")
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
