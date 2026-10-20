@@ -13,6 +13,7 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.widget.FrameLayout
 import android.widget.TextView
+import androidx.webkit.WebResourceErrorCompat
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
 import java.io.ByteArrayInputStream
@@ -70,7 +71,7 @@ class MainActivity : Activity() {
                 override fun onReceivedError(
                     view: WebView,
                     request: WebResourceRequest,
-                    error: android.webkit.WebResourceError
+                    error: WebResourceErrorCompat
                 ) {
                     if (request.isForMainFrame) showLoadError()
                 }
