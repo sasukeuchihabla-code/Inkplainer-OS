@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="color-scheme" content="light">
+  <title>Whiteboard Studio · Offline shell check</title>
+  <style>
+    :root { color-scheme: light; font-family: system-ui, sans-serif; color: #172033; background: #f4f6fb; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 24px 18px 32px; min-height: 100vh; }
+    main { max-width: 520px; margin: 0 auto; }
+    .eyebrow { color: #5266df; font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    h1 { margin: 8px 0; font-size: 28px; line-height: 1.1; }
+    p { line-height: 1.5; }
+    .muted { color: #667085; }
+    .card { margin-top: 16px; padding: 16px; border: 1px solid #e0e5ef; border-radius: 16px; background: #fff; box-shadow: 0 8px 24px #1720330a; }
+    .status { display: grid; grid-template-columns: 98px minmax(0, 1fr); gap: 8px 12px; margin: 0; font-size: 14px; }
+    .status dt { color: #667085; }
+    .status dd { margin: 0; overflow-wrap: anywhere; font-weight: 650; }
+    canvas { display: block; width: 100%; height: auto; margin-top: 10px; border: 1px solid #d5dced; border-radius: 12px; background: #fff; touch-action: none; }
+    button { min-height: 48px; min-width: 96px; margin-top: 12px; padding: 0 16px; border: 0; border-radius: 12px; background: #5266df; color: #fff; font: inherit; font-weight: 700; }
+    button:active { background: #3448c7; }
+    .notice { border-left: 4px solid #5266df; }
+    #touch-result { min-height: 24px; margin-bottom: 0; font-weight: 650; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="eyebrow">M1 · Android host diagnostic</div>
+    <h1>Packaged WebView is running</h1>
+    <p class="muted">This temporary screen verifies that the page and its JavaScript are loaded from the APK, without a remote website.</p>
+
+    <section class="card" aria-labelledby="origin-heading">
+      <h2 id="origin-heading" style="margin:0 0 12px;font-size:17px">Local-origin check</h2>
+      <dl class="status">
+        <dt>Page origin</dt><dd id="origin">Reading…</dd>
+        <dt>JavaScript</dt><dd id="script-status">Waiting for local script…</dd>
+      </dl>
+    </section>
+
+    <section class="card" aria-labelledby="touch-heading">
+      <h2 id="touch-heading" style="margin:0;font-size:17px">Portrait touch check</h2>
+      <p class="muted" style="margin:6px 0 0">Tap or drag inside the board. Each pointer event should draw a mark and update the counter.</p>
+      <canvas id="touch-board" width="480" height="260" aria-label="Touch test drawing board"></canvas>
+      <p id="touch-result" aria-live="polite">No pointer input yet.</p>
+      <button id="clear-board" type="button">Clear marks</button>
+    </section>
+
+    <section class="card notice">
+      <strong>Manual device check</strong>
+      <p style="margin:8px 0 0">Install this debug APK on the Infinix Hot 30, enable airplane mode, then cold-launch and reload the screen. The packaged page should still appear and the touch test should work. This diagnostic is not the editor.</p>
+    </section>
+  </main>
+  <script src="./diagnostic.js" defer></script>
+</body>
+</html>

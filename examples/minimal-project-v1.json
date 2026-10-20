@@ -1,0 +1,80 @@
+{
+  "format": "whiteboard-studio-project",
+  "schemaVersion": 1,
+  "project": {
+    "id": "project-minimal-v1",
+    "name": "Minimal Stroke",
+    "createdAt": "2026-10-19T12:00:00Z",
+    "updatedAt": "2026-10-19T12:00:00Z",
+    "canvas": {
+      "width": 1280,
+      "height": 720,
+      "colorSpace": "srgb"
+    },
+    "frameRate": {
+      "numerator": 30,
+      "denominator": 1
+    },
+    "assets": [],
+    "symbols": [],
+    "scenes": [
+      {
+        "id": "scene-1",
+        "name": "One stroke",
+        "durationFrames": 90,
+        "transitionOut": { "type": "cut" },
+        "background": { "type": "solid", "color": "#FFFFFF" },
+        "camera": {
+          "position": { "x": 640, "y": 360 },
+          "zoom": 1,
+          "rotationDegrees": 0,
+          "tracks": []
+        },
+        "layers": [
+          {
+            "id": "layer-1",
+            "name": "Drawing",
+            "order": 0,
+            "visible": true,
+            "opacity": 1,
+            "objects": [
+              {
+                "id": "path-1",
+                "name": "Curved stroke",
+                "kind": "path",
+                "startFrame": 0,
+                "endFrame": 90,
+                "visible": true,
+                "continuityId": "stroke-one",
+                "transform": {
+                  "position": { "x": 0, "y": 0 },
+                  "scale": { "x": 1, "y": 1 },
+                  "rotationDegrees": 0,
+                  "opacity": 1,
+                  "anchor": { "x": 0, "y": 0 }
+                },
+                "tracks": [],
+                "drawing": {
+                  "mode": "strokeReveal",
+                  "durationFrames": 30,
+                  "fallback": "instant"
+                },
+                "data": {
+                  "viewBox": { "x": 0, "y": 0, "width": 1280, "height": 720 },
+                  "path": "M 200 360 C 400 160 600 560 800 360",
+                  "fill": "none",
+                  "stroke": "#172033",
+                  "strokeWidth": 12,
+                  "lineCap": "round",
+                  "lineJoin": "round"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "continuityTracks": [],
+    "audioTracks": []
+  }
+}

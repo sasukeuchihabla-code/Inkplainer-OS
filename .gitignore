@@ -1,3 +1,8 @@
 .DS_Store
 Thumbs.db
 .vscode/
+.gradle/
+**/build/
+local.properties
+*.iml
+.idea/

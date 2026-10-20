@@ -1,4 +1,40 @@
-# ✏️ Inkplainer
+# Whiteboard Studio — Inkplainer-OS
+
+**Offline-first Android whiteboard animation editor — architecture and feasibility phase.**
+
+This repository currently contains the pre-existing Inkplainer browser editor. Whiteboard Studio is the planned mobile Android product described in the master specification; its Android application has **not** been implemented yet. The existing editor and assets are being preserved while the new project model, rendering contract, and build path are designed.
+
+## Current status
+
+- **Existing source:** desktop-first browser UI in `index.html`, Canvas animation algorithms in `animations.js`, and local hand/image assets. This is not an Android APK and is not yet a phone-first editor.
+- **Selected target architecture:** small Kotlin Android host plus an editor and deterministic renderer packaged locally in WebView; see [ARCHITECTURE.md](ARCHITECTURE.md).
+- **Recipe contract:** versioned v1 format in [RECIPE_FORMAT.md](RECIPE_FORMAT.md), machine-readable [JSON Schema](schema/whiteboard-studio-project-v1.schema.json), and [minimal example](examples/minimal-project-v1.json).
+- **Rendering and milestones:** [RENDERING_SPEC.md](RENDERING_SPEC.md) and [ROADMAP.md](ROADMAP.md).
+- **Implemented for Whiteboard Studio:** architecture/recipe documentation, a minimal diagnostic Android host, packaged local test page, Gradle wrapper, and a debug-APK workflow. The phone-first editor, project storage/migrations, animation renderer, and video export are not implemented.
+
+## Setup and build status
+
+### Existing browser editor
+
+For the current static browser app, run `python3 -m http.server 8080` from the repository root, then open `http://localhost:8080` in a desktop browser. The detailed existing-editor guide is below.
+
+### Android diagnostic shell
+
+The minimal M1 shell is configured for Android 13+ (`minSdk 33`, compile/target SDK 35). When a JDK and Android SDK are available, build it from the repository root with `./gradlew :app:assembleDebug`. The temporary app only verifies the packaged WebView origin and touch events; it is not the editor.
+
+The coding sandbox has no JDK, Android SDK, `adb`, or emulator, so a local APK build and device test are not available here. `.github/workflows/android-debug.yml` runs on pushes to `main`/`arena/**`, pull requests, or manual dispatch; it uploads a debug-signed, non-release APK artifact named `whiteboard-studio-diagnostic-debug` for 7 days. **The workflow has been added but has not yet been run; no APK has been tested on the phone.** The repository was public during inspection, making the standard GitHub-hosted runner the zero-cost build fallback.
+
+### Target device and known limitations
+
+- **Planned first device:** Infinix Hot 30, Android 13, 8 GB RAM, portrait phone. The installed APK and actual device behavior remain unverified.
+- The existing browser UI displays a desktop-only notice on narrow screens; it should not be considered mobile-supported as-is.
+- The current browser app loads Google Fonts remotely and dynamically imports `mp4-muxer` from jsDelivr for its MP4 path. Therefore the existing browser app is not fully offline-first. Its IndexedDB save structure is not the new versioned `.wbs` recipe format.
+- Android WebView rendering, frame capture, native encoding, audio synchronization, memory use, and thermal performance are unverified. Offline MP4 export is a future acceptance gate, not a current feature claim.
+- The baseline has no automated test suite. The new workflow currently builds only; Android instrumentation and device tests are still pending. Environment evidence and architectural decisions are recorded in [ARCHITECTURE.md](ARCHITECTURE.md).
+
+---
+
+## Existing Inkplainer browser editor
 
 **Free, open-source whiteboard animation maker that runs entirely in your browser.**
 
@@ -12,7 +48,7 @@ Turn images and text into hand-drawn explainer videos — no sign-up, no waterma
 
 ---
 
-## Features
+## Existing browser editor features
 
 - **Multiple animation styles** — Chunk Jump, Scanner, Contour, Outline Chunks, plus 7 subject-aware Specialized styles (Human, Animal, Portrait, Vehicle, Building, Landscape, Spiral)
 - **Advanced drawing control** — 5 stroke styles, 4 outline detection algorithms, 3 coloring styles, and 6 image reveal animations
@@ -27,22 +63,17 @@ Turn images and text into hand-drawn explainer videos — no sign-up, no waterma
 
 ---
 
-## Getting Started
+## Existing browser editor: getting started
 
 ### Run locally
 
-```bash
-# Clone the repo
-git clone https://github.com/NadirWeb-App/Inkplainer-OS.git
-cd inkplainer
+From the repository root, serve the static files with Python (or another local static server):
 
-# Serve with any static server (recommended)
-npx serve .
-# or
+```bash
 python3 -m http.server 8080
 ```
 
-Then open the serving local (e.g.,`http://localhost:8080`) in your preferred browser.
+Then open `http://localhost:8080` in a desktop browser. `npx serve .` is another option if Node/npm is available, but is not required.
 
 A local static server is required (rather than opening `index.html` directly) due to browser CORS and Canvas security policies when processing images.
 
@@ -331,22 +362,26 @@ This is the tool used to set up the default hands included in the project. If yo
 
 ---
 
-## Project Structure
+## Repository Structure
 
 ```
-inkplainer/
-├── index.html                     # Main app UI, layout, and interaction logic
-├── animations.js                  # All animation algorithms and rendering engine
-├── LICENSE                        # Apache 2.0
-├── README.md                      # This file
-├── PRIVACY.md                     # Privacy policy
-├── site.webmanifest               # Web application manifest file
-├── social-preview.svg             # Social preview card image
-├── Coordinate Mapper Tool V3.html # Hand coordinates configuration utility
-├── images/                        # Default hand graphics used during animation
-│   └── [hand image files]
-└── pages/
-    └── docs.html                  # Full user documentation page
+Inkplainer-OS/
+├── app/src/main/java/.../MainActivity.kt       # M1 diagnostic Android host
+├── app/src/main/assets/www/                    # Packaged local diagnostic page and script
+├── .github/workflows/android-debug.yml         # Debug APK build/artifact workflow
+├── gradle/wrapper/                             # Gradle 8.13 wrapper
+├── settings.gradle.kts, build.gradle.kts       # Android project configuration
+├── index.html                                  # Existing browser editor
+├── animations.js                               # Existing browser animation algorithms
+├── images/                                     # Existing hand assets and coordinate utility
+├── pages/docs.html                             # Existing browser-editor documentation
+├── README.md                                   # Status and browser-editor guide
+├── ARCHITECTURE.md                             # Module boundaries and decisions
+├── RECIPE_FORMAT.md                            # Versioned recipe contract
+├── RENDERING_SPEC.md                           # Deterministic rendering/export design
+├── ROADMAP.md                                  # Milestones, acceptance criteria, and risks
+├── schema/                                     # Machine-readable recipe schema
+└── examples/                                   # Valid recipe fixtures
 ```
 
 ---
