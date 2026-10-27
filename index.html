@@ -2053,6 +2053,8 @@ input[type="number"]:focus { border-color: var(--accent); }
     0 24px 60px rgba(0,0,0,0.14),
     0 8px 20px rgba(0,0,0,0.08);
   overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
 }
 #canvas-wrapper.mode-select { cursor: default; }
 #canvas-wrapper.mode-select.over-handle { cursor: nwse-resize; }
@@ -2064,6 +2066,7 @@ input[type="number"]:focus { border-color: var(--accent); }
   top: 0; left: 0;
   width: 100%; height: 100%;
   pointer-events: none;
+  touch-action: none;      /* pointer drags must not turn into page scrolls */
 }
 
 /* Canvas overlay labels */
@@ -2760,6 +2763,7 @@ input[type="number"]:focus { border-color: var(--accent); }
   pointer-events: none;
   display: none;
   z-index: 150;
+  touch-action: none;
 }
 #crop-canvas.active { display: block; pointer-events: auto; cursor: crosshair; }
 
@@ -2917,6 +2921,7 @@ input[type="number"]:focus { border-color: var(--accent); }
   position: relative;
 }
 #slicer-preview-canvas {
+  touch-action: none;
   max-width: 100%;
   max-height: 100%;
   border-radius: 4px;
@@ -7261,13 +7266,17 @@ function assignLayerToGroup(layerId, gidStr) {
 let _dragLayerId = null, _dragStartY = 0, _dragOrigIndex = -1;
 function setupLayerDrag() {
   document.querySelectorAll('.layer-drag-handle').forEach(handle => {
-    handle.onmousedown = e => {
+    // Pointer Events so the reorder handle works with a finger too
+    handle.onpointerdown = e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
       e.preventDefault();
       _dragLayerId = parseInt(handle.closest('.layer-item').dataset.id);
       _dragStartY = e.clientY;
       _dragOrigIndex = [...state.layers].reverse().findIndex(l=>l.id===_dragLayerId);
-      document.onmousemove = onDragMove;
-      document.onmouseup   = onDragEnd;
+      try { handle.setPointerCapture(e.pointerId); } catch (_) {}
+      handle.onpointermove = onDragMove;
+      handle.onpointerup   = e2 => { handle.onpointermove = null; handle.onpointerup = null; onDragEnd(e2); };
+      handle.onpointercancel = e2 => { handle.onpointermove = null; handle.onpointerup = null; onDragEnd(e2); };
     };
   });
 }
@@ -7282,7 +7291,6 @@ function onDragMove(e) {
 }
 function onDragEnd(e) {
   if (_dragLayerId === null) return;
-  document.onmousemove = null; document.onmouseup = null;
   const dy = e.clientY - _dragStartY;
   const itemH = 60;
   const shift = Math.round(dy / itemH);
@@ -7335,46 +7343,72 @@ function redrawLayersOnCanvas() {
 
 // ── Selection handles on selectCanvas ──
 const HANDLE_R = 6;
+
+// True on touch screens (phones/tablets). Used to grow the handles and their
+// hit areas so they stay grabbable with a finger.
+function _isCoarsePointer() {
+  return !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+}
+
+// Convert a size in CSS pixels into canvas pixels for the current zoom level.
+// The select canvas is drawn in canvas-pixel space but displayed scaled down,
+// which is why handles used to become invisible on narrow screens.
+function _cssToCanvas(size) {
+  return size * getCanvasScale();
+}
+
 function drawSelectionHandles() {
   sctx.clearRect(0,0,state.canvasW,state.canvasH);
   const layer = getSelectedLayer();
   if (!layer || state.playing) return;
   const {x,y,w,h} = layer;
+  const coarse = _isCoarsePointer();
+  const R      = Math.max(HANDLE_R, _cssToCanvas(coarse ? 9 : 6));   // corner radius
+  const MR     = Math.max(4,        _cssToCanvas(coarse ? 7 : 4.5)); // edge radius
+  const lw     = Math.max(2,        _cssToCanvas(1.6));
+  const olw    = Math.max(1.5,      _cssToCanvas(1.5));
+  const dash   = Math.max(5,        _cssToCanvas(5));
+  const gap    = Math.max(3,        _cssToCanvas(3));
   sctx.save();
   // Selection rect
   sctx.strokeStyle='#6c63ff';
-  sctx.lineWidth=2;
-  sctx.setLineDash([5,3]);
+  sctx.lineWidth=lw;
+  sctx.setLineDash([dash,gap]);
   sctx.strokeRect(x,y,w,h);
   sctx.setLineDash([]);
   // Corner handles
   const corners = [[x,y],[x+w,y],[x+w,y+h],[x,y+h]];
   corners.forEach(([cx2,cy2])=>{
     sctx.fillStyle='#6c63ff';
-    sctx.beginPath(); sctx.arc(cx2,cy2,HANDLE_R,0,Math.PI*2); sctx.fill();
-    sctx.strokeStyle='#fff'; sctx.lineWidth=1.5; sctx.stroke();
+    sctx.beginPath(); sctx.arc(cx2,cy2,R,0,Math.PI*2); sctx.fill();
+    sctx.strokeStyle='#fff'; sctx.lineWidth=olw; sctx.stroke();
   });
   // Edge midpoint handles
   const mids = [[x+w/2,y],[x+w,y+h/2],[x+w/2,y+h],[x,y+h/2]];
   mids.forEach(([cx2,cy2])=>{
     sctx.fillStyle='#fff';
-    sctx.beginPath(); sctx.arc(cx2,cy2,4,0,Math.PI*2); sctx.fill();
-    sctx.strokeStyle='#6c63ff'; sctx.lineWidth=1.5; sctx.stroke();
+    sctx.beginPath(); sctx.arc(cx2,cy2,MR,0,Math.PI*2); sctx.fill();
+    sctx.strokeStyle='#6c63ff'; sctx.lineWidth=olw; sctx.stroke();
   });
   sctx.restore();
 }
 
 // ── Canvas pointer interaction: move + resize ──
-let _interact = null; // {type:'move'|'resize', corner, startX, startY, origLayer}
+let _interact = null; // {type:'move'|'resize', handle, pointerId, startX, startY, origLayer}
 let _scale = 1; // canvas CSS scale
+
+function _captureCanvasPointer(e) {
+  try { selectCanvas.setPointerCapture(e.pointerId); } catch (_) { /* not supported */ }
+}
 
 function getCanvasScale() {
   const rect = canvas.getBoundingClientRect();
+  if (!rect.width) return 1; // canvas hidden / not laid out yet
   return state.canvasW / rect.width;
 }
 function toCanvasCoords(e) {
   const rect = canvas.getBoundingClientRect();
-  const s = state.canvasW / rect.width;
+  const s = rect.width ? state.canvasW / rect.width : 1;
   return { x: (e.clientX - rect.left) * s, y: (e.clientY - rect.top) * s };
 }
 function hitTestHandle(px, py, layer) {
@@ -7389,10 +7423,15 @@ function hitTestHandle(px, py, layer) {
     {type:'s',  cx:x+w/2, cy:y+h},
     {type:'w',  cx:x,     cy:y+h/2},
   ];
+  // Touch needs a much larger grab radius than a mouse. Pick the nearest handle
+  // inside that radius so small layers still resize from the right corner.
+  const tol = Math.max(HANDLE_R * 2, _cssToCanvas(_isCoarsePointer() ? 20 : 12));
+  let best = null, bestDist = Infinity;
   for (const h2 of handles) {
-    if (Math.hypot(px-h2.cx, py-h2.cy) <= HANDLE_R*2) return h2.type;
+    const d = Math.hypot(px-h2.cx, py-h2.cy);
+    if (d <= tol && d < bestDist) { best = h2.type; bestDist = d; }
   }
-  return null;
+  return best;
 }
 function hitTestLayer(px, py) {
   // Check from top (last) to bottom (first)
@@ -7406,8 +7445,14 @@ function hitTestLayer(px, py) {
 const wrapper = document.getElementById('canvas-wrapper');
 selectCanvas.style.pointerEvents = 'auto';
 
-selectCanvas.addEventListener('mousedown', e => {
+selectCanvas.addEventListener('pointerdown', e => {
   if (state.playing) return;
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+
+  // Pointer Events cover mouse, pen and touch in one path. Scrolling is
+  // suppressed by touch-action:none on the canvas, so we deliberately do NOT
+  // cancel this event — cancelling pointerdown suppresses the compatibility
+  // mouse events and would break double-click-to-edit-text on desktop.
   const {x,y} = toCanvasCoords(e);
 
   // ── Text placement mode: click to open editor ──
@@ -7428,12 +7473,14 @@ selectCanvas.addEventListener('mousedown', e => {
   if (sel) {
     const handle = hitTestHandle(x,y,sel);
     if (handle) {
-      _interact = {type:'resize', handle, startX:x, startY:y,
+      _interact = {type:'resize', handle, pointerId:e.pointerId, startX:x, startY:y,
         orig:{x:sel.x,y:sel.y,w:sel.w,h:sel.h}};
+      _captureCanvasPointer(e);
       return;
     }
     if (x>=sel.x&&x<=sel.x+sel.w&&y>=sel.y&&y<=sel.y+sel.h) {
-      _interact = {type:'move', startX:x, startY:y, orig:{x:sel.x,y:sel.y,w:sel.w,h:sel.h}};
+      _interact = {type:'move', pointerId:e.pointerId, startX:x, startY:y, orig:{x:sel.x,y:sel.y,w:sel.w,h:sel.h}};
+      _captureCanvasPointer(e);
       return;
     }
   }
@@ -7443,13 +7490,14 @@ selectCanvas.addEventListener('mousedown', e => {
   else { state.selectedLayerId = null; renderLayerList(); drawSelectionHandles(); }
 });
 
-selectCanvas.addEventListener('mousemove', e => {
+selectCanvas.addEventListener('pointermove', e => {
   if (state.playing) return;
+  if (_interact && _interact.pointerId !== undefined && e.pointerId !== _interact.pointerId) return;
   const {x,y} = toCanvasCoords(e);
   const sel = getSelectedLayer();
   if (!_interact) {
-    // Cursor feedback
-    if (sel) {
+    // Cursor feedback (mouse/pen only — a finger has no cursor)
+    if (sel && e.pointerType !== 'touch') {
       const handle = hitTestHandle(x,y,sel);
       selectCanvas.style.cursor = handle ? 'nwse-resize' : (x>=sel.x&&x<=sel.x+sel.w&&y>=sel.y&&y<=sel.y+sel.h ? 'move' : 'default');
     } else { selectCanvas.style.cursor = 'default'; }
@@ -7496,8 +7544,9 @@ selectCanvas.addEventListener('dblclick', e => {
   }
 });
 
-document.addEventListener('mouseup', () => {
+function _endCanvasInteraction(e) {
   if (!_interact) return;
+  if (e && e.pointerId !== undefined && _interact.pointerId !== undefined && e.pointerId !== _interact.pointerId) return;
   const sel = getSelectedLayer();
   const wasInteract = _interact.type;
   const orig = _interact.orig;
@@ -7517,7 +7566,13 @@ document.addEventListener('mouseup', () => {
       scheduleAutoSave();
     }
   }
-});
+}
+
+// Pointer capture keeps the gesture alive even when the finger leaves the canvas.
+// pointercancel covers Android system gestures stealing the pointer mid-drag.
+document.addEventListener('pointerup', _endCanvasInteraction);
+document.addEventListener('pointercancel', _endCanvasInteraction);
+window.addEventListener('blur', () => { _interact = null; });
 
 
 
@@ -8713,7 +8768,7 @@ function setCanvasSize(el) {
  'outline-detect-slider'].forEach(id => {
   const el = document.getElementById(id);
   if (!el) return;
-  el.addEventListener('mousedown', () => { pushUndoSnapshot(); }, { passive: true });
+  el.addEventListener('pointerdown', () => { pushUndoSnapshot(); }, { passive: true });
 });
 
 document.getElementById('speed-slider').addEventListener('input', function() {
@@ -10450,8 +10505,9 @@ function _cropCoords(e) {
   };
 }
 
-_cropCanvas.addEventListener('mousedown', e => {
+_cropCanvas.addEventListener('pointerdown', e => {
   if (!_cropState) return;
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
   const { x: cx, y: cy } = _cropCoords(e);
   const handle = _getCropHandle(cx, cy);
   _cropState.dragging   = true;
@@ -10459,10 +10515,11 @@ _cropCanvas.addEventListener('mousedown', e => {
   _cropState.startX     = cx;
   _cropState.startY     = cy;
   _cropState.origRect   = { ..._cropState.rect };
+  try { _cropCanvas.setPointerCapture(e.pointerId); } catch (_) {}
   e.preventDefault();
 });
 
-_cropCanvas.addEventListener('mousemove', e => {
+_cropCanvas.addEventListener('pointermove', e => {
   if (!_cropState) return;
   const { x: cx, y: cy } = _cropCoords(e);
 
@@ -10516,7 +10573,10 @@ _cropCanvas.addEventListener('mousemove', e => {
   _drawCropOverlay();
 });
 
-document.addEventListener('mouseup', () => {
+document.addEventListener('pointerup', () => {
+  if (_cropState) _cropState.dragging = false;
+});
+document.addEventListener('pointercancel', () => {
   if (_cropState) _cropState.dragging = false;
 });
 
@@ -10773,7 +10833,9 @@ function _pcCoords(e) {
   };
 }
 
-_slicerPC.addEventListener('mousedown', e => {
+_slicerPC.addEventListener('pointerdown', e => {
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  try { _slicerPC.setPointerCapture(e.pointerId); } catch (_) {}
   if (_slicerMode === 'rect') {
     const { x, y } = _pcCoords(e);
     _slicerRectDrag = { startX: x, startY: y, cur: null };
@@ -10786,7 +10848,7 @@ _slicerPC.addEventListener('mousedown', e => {
   }
 });
 
-_slicerPC.addEventListener('mousemove', e => {
+_slicerPC.addEventListener('pointermove', e => {
   if (_slicerMode === 'rect' && _slicerRectDrag) {
     const { x, y, px, py } = _pcCoords(e);
     const sx = _slicerRectDrag.startX;
@@ -10805,7 +10867,7 @@ _slicerPC.addEventListener('mousemove', e => {
   }
 });
 
-_slicerPC.addEventListener('mouseup', e => {
+_slicerPC.addEventListener('pointerup', e => {
   if (_slicerMode === 'rect' && _slicerRectDrag) {
     const { x, y } = _pcCoords(e);
     const sx = _slicerRectDrag.startX, sy = _slicerRectDrag.startY;
