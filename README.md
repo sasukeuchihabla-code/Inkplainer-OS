@@ -23,6 +23,7 @@ Turn images and text into hand-drawn explainer videos — no sign-up, no waterma
 - **Export as MP4 or WebM** — record and download at 720p, 1080p, or 1440p
 - **Export final frame as PNG** — grab a still of the finished animation in one click
 - **Auto-save projects** — every change is saved to your browser automatically; the Projects window shows total storage used across all your saved projects
+- **Works on a phone** — below 900px wide the side panels become a bottom toolbar with Elements / Text / Image / Music / BG / Hand sheets, and selected objects can be dragged and resized with a finger
 - **Private by design** — no accounts, no analytics, no tracking; all processing happens locally on your device
 
 ---
@@ -66,6 +67,48 @@ If you need to run the application in a completely offline or air-gapped environ
   ```javascript
   const mod = await import('./mp4-muxer.mjs');
   ```
+
+---
+
+## Mobile Layout — Batch 1 (phones, ≤ 899px)
+
+Inkplainer used to show a "please use a desktop" notice on narrow screens. That gate is gone: below **900px** the app switches to a phone layout.
+
+| Area | Desktop | Phone |
+|------|---------|-------|
+| Add / edit content | Left sidebar + right panel | Bottom toolbar: **Elements · Text · Image · Music · BG · Hand** |
+| Panels | Always visible | Bottom sheets — canvas stays visible above them |
+| Animation & Drawing tabs, presets, Generate | Left sidebar | **Style** button in the top bar (play icon) |
+| Hand style, speeds, canvas size | Bottom bar | **Hand** sheet |
+| Move / resize an object | Mouse drag on canvas | Finger drag on canvas — handles are scaled up for touch |
+
+How it works: nothing is duplicated. On a phone the existing desktop panels (sidebar, image/text/background sections, layer list, bottom bar) are **moved** into the sheet bodies at runtime, so every id, inline handler and saved setting continues to work. Rotating back to a wide screen puts each panel back where it came from.
+
+While a sheet is open the canvas area gives up exactly the sheet's height (capped at 55% of the screen), so the canvas re-fits above the sheet instead of being covered — the canvas stays usable the whole time you are editing.
+
+Batch 1 also switched the canvas, crop and slicer interactions from mouse events to **Pointer Events** (with pointer capture), so touch drags behave the same as mouse drags, and the selection handles are now sized in on-screen pixels instead of canvas pixels (they used to shrink to a couple of pixels on a phone).
+
+**Music sheet:** the tab exists, but audio (music import, voice-over recording, audio in the export) arrives in Batch 6.
+
+### Test it on a phone
+
+```bash
+python3 -m http.server 8080      # then open http://<your-computer-ip>:8080 on the phone
+```
+> For the same HTTPS requirement as export, serve the site from a static host (or use `chrome://inspect` port-forwarding to `localhost`) so video export is available.
+
+1. Open the app in Chrome on Android at 360×800 (or use Chrome DevTools device mode at 360×640, 360×800 and 430×932).
+2. Confirm there is **no** "works best on a desktop browser" notice and no horizontal scrolling anywhere.
+3. Tap each of the six toolbar buttons: **Elements, Text, Image, Music, BG, Hand**. Each opens a sheet and the sheet's own button highlights.
+4. Check the canvas re-fits and stays fully visible above every open sheet, and that the playbar hides while a sheet is open.
+5. Tap the same button again, then the **×** button, then the dimmed canvas — all three close the sheet.
+6. Tap the ⤢ button in a sheet header — the sheet expands and collapses, and still closes cleanly.
+7. Open **Style** from the top bar: switch Animation ↔ Drawing, tap a style, scroll to **Generate** and tap it — the sheet closes and the animation plays.
+8. Add an image from **Image**, then in **Elements** tap the layer to select it. Drag it with one finger; drag a corner handle to resize. No page scroll during the drag.
+9. Rotate the phone to landscape and back: panels still open, the canvas re-fits, nothing overflows.
+10. Tap **Export Video** in the top bar (an open sheet closes automatically) and export a short clip — it must still download and play.
+11. Undo/redo (top bar) still work after a move/resize.
+12. While the sheet is open, tap the project name to rename — the keyboard must not break the layout.
 
 ---
 
