@@ -11211,10 +11211,12 @@ function _refreshCanvasLayout() {
 }
 
 // The open sheet reports its height to CSS (--sheet-h) so #main can reserve
-// that space; capped so a very tall sheet never squeezes the canvas away.
+// that space. The cap matches .sheet's max-height (60dvh) so a full-height
+// sheet still leaves the canvas fully visible; an explicitly expanded (.tall)
+// sheet is allowed to cover part of the canvas.
 function _syncSheetSpace() {
   const open = document.querySelector('.sheet.open');
-  const cap  = Math.round(window.innerHeight * 0.55);
+  const cap  = Math.round(window.innerHeight * 0.6);
   const reserve = open ? Math.min(Math.round(open.getBoundingClientRect().height), cap) : 0;
   document.body.style.setProperty('--sheet-h', Math.max(0, reserve) + 'px');
   _refreshCanvasLayout();
