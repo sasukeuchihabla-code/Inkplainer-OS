@@ -3229,7 +3229,10 @@ input[type="number"]:focus { border-color: var(--accent); }
 #btn-mobile-style { display: none; }
 
 @media (max-width: 899px) {
-  :root { --mobile-bar-h: 58px; }   /* bottom toolbar height — used by main, sheets, backdrop */
+  :root {
+    --mobile-bar-h: 58px;    /* bottom toolbar height — used by main, sheets, backdrop */
+    --mobile-topbar-h: 48px; /* compact top bar height */
+  }
 
   html { -webkit-text-size-adjust: 100%; }
 
@@ -3243,8 +3246,8 @@ input[type="number"]:focus { border-color: var(--accent); }
 
   /* ── TOP BAR (compact) ── */
   #topbar {
-    height: 48px;
-    min-height: 48px;
+    height: var(--mobile-topbar-h);
+    min-height: var(--mobile-topbar-h);
     padding: 0 4px;
     gap: 3px;
   }
@@ -3394,7 +3397,8 @@ input[type="number"]:focus { border-color: var(--accent); }
   #mobile-backdrop {
     display: block;
     position: fixed;
-    left: 0; right: 0; top: 0;
+    left: 0; right: 0;
+    top: var(--mobile-topbar-h);
     bottom: calc(var(--mobile-bar-h) + env(safe-area-inset-bottom, 0px));
     z-index: 700;
     background: rgba(0,0,0,0.32);
@@ -3417,6 +3421,7 @@ input[type="number"]:focus { border-color: var(--accent); }
     border-radius: 16px 16px 0 0;
     box-shadow: 0 -12px 40px rgba(0,0,0,0.18);
     max-height: 60dvh;
+    overflow: hidden;
     transform: translateY(110%);
     pointer-events: none;
     transition: transform 0.26s cubic-bezier(0.2, 0.8, 0.2, 1);
