@@ -3294,6 +3294,10 @@ input[type="number"]:focus { border-color: var(--accent); }
     border-color: var(--border-hi);
   }
   #btn-export-top .btn-text { display: none; }
+  /* Very narrow phones (360px): drop the logo so the project name keeps room */
+  @media (max-width: 380px) {
+    .topbar-logo { display: none; }
+  }
 
   /* ── BODY / CANVAS ── */
   #app-body { flex: 1; min-height: 0; }
