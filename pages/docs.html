@@ -488,7 +488,7 @@ kbd {
     <div class="doc-hero">
       <div class="doc-hero-eyebrow">User Documentation</div>
       <h1 class="doc-hero-title">How Inkplainer Works</h1>
-      <p class="doc-hero-desc">Everything you need to create hand-drawn whiteboard animations in a desktop browser — from adding your first image to exporting a finished video. Use the sidebar to jump to any section.</p>
+      <p class="doc-hero-desc">Everything you need to create hand-drawn whiteboard animations in your browser — on a laptop or a phone — from adding your first image to exporting a finished video. Use the sidebar to jump to any section.</p>
       <div class="doc-hero-flow">
         <div class="flow-step"><div class="flow-step-num">1</div> Add Layers</div>
         <span class="flow-arrow">→</span>
@@ -585,6 +585,21 @@ kbd {
           </tbody>
         </table>
       </div>
+
+      <hr class="doc-hr">
+
+      <h3 class="doc-h3" id="phone">On a Phone</h3>
+      <p class="doc-p">Below 900px wide (any phone held normally) the desktop side panels are replaced by a bottom toolbar with six tools — <strong>Elements</strong>, <strong>Text</strong>, <strong>Image</strong>, <strong>Music</strong>, <strong>BG</strong> and <strong>Hand</strong>. Tapping a tool opens its panel as a bottom sheet; tap the tool again, the <strong>×</strong> button, or anywhere on the dimmed canvas to close it. The canvas stays visible the whole time.</p>
+      <ul class="doc-ul">
+        <li><strong>Elements</strong> — your layer list (select, rename, reorder, hide, delete) plus the Crop / Slice / Group actions</li>
+        <li><strong>Text</strong> — place text, font, size, style, alignment, colour</li>
+        <li><strong>Image</strong> — add images from your phone's gallery or files</li>
+        <li><strong>BG</strong> — canvas background colours and presets</li>
+        <li><strong>Hand</strong> — hand style, reveal speed, hand speed and canvas size</li>
+        <li><strong>Style</strong> (the play button in the top bar) — the Animation and Drawing tabs, presets, and the Generate button</li>
+      </ul>
+      <p class="doc-p">Selected objects show on-canvas handles you can drag with a finger — drag the object to move it, drag a corner or edge dot to resize it, tap the red ✕ to delete it and drag the ↻ to rotate it. The ⤢ button in a sheet header expands the panel when you need more room. Object actions (duplicate, copy/paste, flip, rotate, front/back, nudge, colour) live in the <strong>Elements</strong> sheet, above the layer list.</p>
+      <div class="doc-note">The guided welcome tour is desktop-only, because it points at the side panels. Everything else — including generating and exporting video — works the same on a phone. Video export needs a secure context (HTTPS or localhost).</div>
 
       <hr class="doc-hr">
 
@@ -710,6 +725,14 @@ kbd {
           </tbody>
         </table>
       </div>
+
+      <hr class="doc-hr">
+
+      <h3 class="doc-h3" id="object-tools">Object Tools</h3>
+      <p class="doc-p">Select an object and the object tools panel (above the layer list, or in the Elements sheet on a phone) offers: <strong>Duplicate</strong>, <strong>Copy</strong>/<strong>Paste</strong>, <strong>Flip H</strong>, <strong>Rotate ↺/↻</strong>, <strong>Front</strong>/<strong>Back</strong>, <strong>Delete</strong>, a four-arrow <strong>nudge pad</strong> and a per-object <strong>colour</strong> picker.</p>
+      <p class="doc-p">On the canvas the selected object gets four handle types: the red <strong>✕</strong> (top-left) deletes on tap — sliding off cancels it; the <strong>↻</strong> (top-right) rotates as you drag around the centre; the <strong>■</strong> corners and <strong>●</strong> edge dots resize, anchored on the opposite corner or edge.</p>
+      <p class="doc-p">Flip and rotate are baked into the object's pixels. The animation engine and the export therefore use the result directly, and undo still works because each undo step stores the layer images.</p>
+      <div class="doc-note">Object colour applies to <strong>text objects</strong> (text colour) and <strong>SVG objects</strong> (every fill and stroke that is not <code>none</code>). Photos stay as they are — the picker is disabled with a note explaining why.</div>
     </div>
 
     <!-- ═══ SECTION 4 ═══ -->
