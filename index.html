@@ -7574,7 +7574,9 @@ function redrawLayersOnCanvas() {
   fillBg(ctx);
   
   state.layers.forEach(layer => {
+    if (!layer) return;
     if (layer.visible === false) return;
+    if (_rotPreview && layer.id === _rotPreview.layerId) return; // rotate preview draws it
     if (!layer.img) return; // Skip if image not loaded
     // Hide the layer being edited — the overlay textarea is the live preview
     if (_ts.active && _ts.editingId !== null && layer.id === _ts.editingId) return;
@@ -7610,38 +7612,115 @@ function _cssToCanvas(size) {
   return size * getCanvasScale();
 }
 
+// Corner/edge handles are drawn in on-screen pixels so they stay finger-sized.
+// Top-left = delete, top-right = rotate, bottom corners + edges = resize.
+function _handleMetrics() {
+  const coarse = _isCoarsePointer();
+  return {
+    R:   Math.max(HANDLE_R, _cssToCanvas(coarse ? 10 : 6)),   // action handle radius
+    SQ:  Math.max(6,        _cssToCanvas(coarse ? 9 : 6)),    // resize square half-size
+    MR:  Math.max(4,        _cssToCanvas(coarse ? 7 : 4.5)),  // edge handle radius
+    lw:  Math.max(2,        _cssToCanvas(1.6)),
+    olw: Math.max(1.5,      _cssToCanvas(1.5)),
+    dash: Math.max(5,       _cssToCanvas(5)),
+    gap:  Math.max(3,       _cssToCanvas(3)),
+  };
+}
+
+// Very small objects would have overlapping handles — fall back to plain resize
+function _showActionHandles(layer) {
+  if (!layer) return false;
+  const { R } = _handleMetrics();
+  return layer.w >= R * 6 && layer.h >= R * 6;
+}
+
 function drawSelectionHandles() {
   sctx.clearRect(0,0,state.canvasW,state.canvasH);
   const layer = getSelectedLayer();
   if (!layer || state.playing) return;
   const {x,y,w,h} = layer;
-  const coarse = _isCoarsePointer();
-  const R      = Math.max(HANDLE_R, _cssToCanvas(coarse ? 9 : 6));   // corner radius
-  const MR     = Math.max(4,        _cssToCanvas(coarse ? 7 : 4.5)); // edge radius
-  const lw     = Math.max(2,        _cssToCanvas(1.6));
-  const olw    = Math.max(1.5,      _cssToCanvas(1.5));
-  const dash   = Math.max(5,        _cssToCanvas(5));
-  const gap    = Math.max(3,        _cssToCanvas(3));
+  const m = _handleMetrics();
+
+  // ── Live rotate preview ──
+  if (_rotPreview && _rotPreview.layerId === layer.id) {
+    sctx.save();
+    sctx.translate(x + w/2, y + h/2);
+    sctx.rotate(_rotPreview.angle);
+    sctx.globalAlpha = 0.9;
+    sctx.drawImage(_rotPreview.img, -w/2, -h/2, w, h);
+    sctx.globalAlpha = 1;
+    sctx.strokeStyle = '#6c63ff';
+    sctx.lineWidth = m.lw;
+    sctx.setLineDash([m.dash, m.gap]);
+    sctx.strokeRect(-w/2, -h/2, w, h);
+    sctx.restore();
+    return;
+  }
+
   sctx.save();
   // Selection rect
   sctx.strokeStyle='#6c63ff';
-  sctx.lineWidth=lw;
-  sctx.setLineDash([dash,gap]);
+  sctx.lineWidth=m.lw;
+  sctx.setLineDash([m.dash,m.gap]);
   sctx.strokeRect(x,y,w,h);
   sctx.setLineDash([]);
-  // Corner handles
-  const corners = [[x,y],[x+w,y],[x+w,y+h],[x,y+h]];
-  corners.forEach(([cx2,cy2])=>{
-    sctx.fillStyle='#6c63ff';
-    sctx.beginPath(); sctx.arc(cx2,cy2,R,0,Math.PI*2); sctx.fill();
-    sctx.strokeStyle='#fff'; sctx.lineWidth=olw; sctx.stroke();
+
+  const actions = _showActionHandles(layer);
+
+  // ── Top-left: delete ──
+  if (actions) {
+    sctx.beginPath(); sctx.arc(x, y, m.R, 0, Math.PI*2);
+    sctx.fillStyle = '#dc2626'; sctx.fill();
+    sctx.strokeStyle = '#fff'; sctx.lineWidth = m.olw; sctx.stroke();
+    const k = m.R * 0.42;
+    sctx.beginPath();
+    sctx.moveTo(x-k, y-k); sctx.lineTo(x+k, y+k);
+    sctx.moveTo(x+k, y-k); sctx.lineTo(x-k, y+k);
+    sctx.strokeStyle = '#fff';
+    sctx.lineWidth = Math.max(1.6, _cssToCanvas(1.8));
+    sctx.lineCap = 'round';
+    sctx.stroke();
+    sctx.lineCap = 'butt';
+  }
+
+  // ── Top-right: rotate ──
+  if (actions) {
+    const rx = x + w, ry = y;
+    sctx.beginPath(); sctx.arc(rx, ry, m.R, 0, Math.PI*2);
+    sctx.fillStyle = '#fff'; sctx.fill();
+    sctx.strokeStyle = '#6c63ff'; sctx.lineWidth = m.olw; sctx.stroke();
+    // circular arrow glyph
+    const ar = m.R * 0.6;
+    const a0 = -Math.PI * 0.45, a1 = Math.PI * 0.85;
+    sctx.beginPath();
+    sctx.arc(rx, ry, ar, a0, a1);
+    sctx.strokeStyle = '#6c63ff';
+    sctx.lineWidth = Math.max(1.5, _cssToCanvas(1.7));
+    sctx.stroke();
+    const hx = rx + ar * Math.cos(a0), hy = ry + ar * Math.sin(a0);
+    const hs = Math.max(2, m.R * 0.34);
+    sctx.beginPath();
+    sctx.moveTo(hx + hs * 0.15, hy - hs);
+    sctx.lineTo(hx + hs * 1.15, hy + hs * 0.15);
+    sctx.lineTo(hx - hs * 0.75, hy + hs * 0.35);
+    sctx.closePath();
+    sctx.fillStyle = '#6c63ff'; sctx.fill();
+  }
+
+  // ── Bottom corners: resize ──
+  [[x, y+h], [x+w, y+h]].forEach(([cx2, cy2]) => {
+    sctx.fillStyle = '#6c63ff';
+    sctx.fillRect(cx2 - m.SQ, cy2 - m.SQ, m.SQ*2, m.SQ*2);
+    sctx.strokeStyle = '#fff'; sctx.lineWidth = m.olw;
+    sctx.strokeRect(cx2 - m.SQ, cy2 - m.SQ, m.SQ*2, m.SQ*2);
   });
-  // Edge midpoint handles
+
+  // ── Edge midpoints: resize (subtle, keeps desktop resizing familiar) ──
   const mids = [[x+w/2,y],[x+w,y+h/2],[x+w/2,y+h],[x,y+h/2]];
   mids.forEach(([cx2,cy2])=>{
     sctx.fillStyle='#fff';
-    sctx.beginPath(); sctx.arc(cx2,cy2,MR,0,Math.PI*2); sctx.fill();
-    sctx.strokeStyle='#6c63ff'; sctx.lineWidth=olw; sctx.stroke();
+    sctx.beginPath(); sctx.arc(cx2,cy2,m.MR,0,Math.PI*2); sctx.fill();
+    sctx.strokeStyle='#6c63ff'; sctx.lineWidth=m.olw; sctx.stroke();
   });
   sctx.restore();
 }
@@ -7666,15 +7745,17 @@ function toCanvasCoords(e) {
 }
 function hitTestHandle(px, py, layer) {
   const {x,y,w,h} = layer;
+  const actions = _showActionHandles(layer);
   const handles = [
-    {type:'nw', cx:x,   cy:y},
-    {type:'ne', cx:x+w, cy:y},
-    {type:'se', cx:x+w, cy:y+h},
-    {type:'sw', cx:x,   cy:y+h},
-    {type:'n',  cx:x+w/2, cy:y},
-    {type:'e',  cx:x+w,   cy:y+h/2},
-    {type:'s',  cx:x+w/2, cy:y+h},
-    {type:'w',  cx:x,     cy:y+h/2},
+    // top corners are actions on big enough objects, plain resize on tiny ones
+    {kind: actions ? 'delete' : 'resize', handle:'nw', cx:x,   cy:y},
+    {kind: actions ? 'rotate' : 'resize', handle:'ne', cx:x+w, cy:y},
+    {kind:'resize', handle:'sw', cx:x,   cy:y+h},
+    {kind:'resize', handle:'se', cx:x+w, cy:y+h},
+    {kind:'resize', handle:'n',  cx:x+w/2, cy:y},
+    {kind:'resize', handle:'e',  cx:x+w,   cy:y+h/2},
+    {kind:'resize', handle:'s',  cx:x+w/2, cy:y+h},
+    {kind:'resize', handle:'w',  cx:x,     cy:y+h/2},
   ];
   // Touch needs a much larger grab radius than a mouse. Pick the nearest handle
   // inside that radius so small layers still resize from the right corner.
@@ -7682,7 +7763,7 @@ function hitTestHandle(px, py, layer) {
   let best = null, bestDist = Infinity;
   for (const h2 of handles) {
     const d = Math.hypot(px-h2.cx, py-h2.cy);
-    if (d <= tol && d < bestDist) { best = h2.type; bestDist = d; }
+    if (d <= tol && d < bestDist) { best = h2; bestDist = d; }
   }
   return best;
 }
@@ -8153,9 +8234,24 @@ selectCanvas.addEventListener('pointerdown', e => {
 
   // Check handle hit first
   if (sel) {
-    const handle = hitTestHandle(x,y,sel);
-    if (handle) {
-      _interact = {type:'resize', handle, pointerId:e.pointerId, startX:x, startY:y,
+    const hit = hitTestHandle(x,y,sel);
+    if (hit && hit.kind === 'delete') {
+      // Delete only fires on a real tap — dragging off the handle cancels it,
+      // so an accidental touch can't remove an object.
+      _pendingDelete = { layerId: sel.id, pointerId: e.pointerId, x, y };
+      _captureCanvasPointer(e);
+      return;
+    }
+    if (hit && hit.kind === 'rotate') {
+      const ccx = sel.x + sel.w/2, ccy = sel.y + sel.h/2;
+      _interact = {type:'rotate', pointerId:e.pointerId, cx:ccx, cy:ccy, angle:0,
+        startAngle: Math.atan2(y - ccy, x - ccx),
+        origImg: sel.img, origX: sel.x, origY: sel.y, origW: sel.w, origH: sel.h};
+      _captureCanvasPointer(e);
+      return;
+    }
+    if (hit) {
+      _interact = {type:'resize', handle: hit.handle, pointerId:e.pointerId, startX:x, startY:y,
         orig:{x:sel.x,y:sel.y,w:sel.w,h:sel.h}};
       _captureCanvasPointer(e);
       return;
@@ -8180,12 +8276,29 @@ selectCanvas.addEventListener('pointermove', e => {
   if (!_interact) {
     // Cursor feedback (mouse/pen only — a finger has no cursor)
     if (sel && e.pointerType !== 'touch') {
-      const handle = hitTestHandle(x,y,sel);
-      selectCanvas.style.cursor = handle ? 'nwse-resize' : (x>=sel.x&&x<=sel.x+sel.w&&y>=sel.y&&y<=sel.y+sel.h ? 'move' : 'default');
+      const hit = hitTestHandle(x,y,sel);
+      selectCanvas.style.cursor = hit
+        ? (hit.kind === 'delete' ? 'pointer' : hit.kind === 'rotate' ? 'grab' : 'nwse-resize')
+        : (x>=sel.x&&x<=sel.x+sel.w&&y>=sel.y&&y<=sel.y+sel.h ? 'move' : 'default');
     } else { selectCanvas.style.cursor = 'default'; }
     return;
   }
   if (!sel) return;
+
+  // ── Rotate drag: preview on the select canvas, bake on release ──
+  if (_interact.type === 'rotate') {
+    let a = Math.atan2(y - _interact.cy, x - _interact.cx) - _interact.startAngle;
+    while (a >  Math.PI) a -= Math.PI * 2;
+    while (a < -Math.PI) a += Math.PI * 2;
+    _interact.angle = a;
+    _rotPreview = {
+      layerId: sel.id, angle: a, img: _interact.origImg,
+      x: _interact.origX, y: _interact.origY, w: _interact.origW, h: _interact.origH,
+    };
+    redrawLayersOnCanvas();   // skips the rotating layer
+    drawSelectionHandles();   // draws the rotated preview
+    return;
+  }
   const dx = x - _interact.startX, dy = y - _interact.startY;
   if (_interact.type === 'move') {
     sel.x = _interact.orig.x + dx;
@@ -8208,6 +8321,7 @@ selectCanvas.addEventListener('pointermove', e => {
   }
   redrawLayersOnCanvas();
   drawSelectionHandles();
+  _syncObjectTools();
   // Update input fields in layer settings
   ['x','y','w','h'].forEach(p=>{
     const inp = document.querySelector(`#ls-${sel.id} input[onchange*="'${p}'"]`);
@@ -8226,13 +8340,51 @@ selectCanvas.addEventListener('dblclick', e => {
   }
 });
 
-function _endCanvasInteraction(e) {
+function _endCanvasInteraction(e, cancelled) {
+  // ── Tap on the delete handle ──
+  if (_pendingDelete) {
+    const pending = _pendingDelete;
+    _pendingDelete = null;
+    let far = false;
+    if (e && e.clientX !== undefined && e.clientY !== undefined) {
+      const up = toCanvasCoords(e);
+      far = Math.hypot(up.x - pending.x, up.y - pending.y) > _cssToCanvas(16);
+    }
+    if (!cancelled && !far) {
+      const layer = getLayerById(pending.layerId);
+      if (layer) {
+        if (state.selectedLayerId !== layer.id) selectLayer(layer.id);
+        objectDelete();
+      }
+    }
+    return;
+  }
   if (!_interact) return;
   if (e && e.pointerId !== undefined && _interact.pointerId !== undefined && e.pointerId !== _interact.pointerId) return;
-  const sel = getSelectedLayer();
-  const wasInteract = _interact.type;
-  const orig = _interact.orig;
+  const info = _interact;
   _interact = null;
+
+  // ── Rotation finished ──
+  if (info.type === 'rotate') {
+    const sel = getSelectedLayer();
+    _rotPreview = null;
+    redrawLayersOnCanvas();
+    drawSelectionHandles();
+    if (sel && !cancelled && Math.abs(info.angle) > 0.02) {
+      pushUndoSnapshot();
+      _transformLayerImage(sel, { angle: info.angle, srcImg: info.origImg }, ok => {
+        if (!ok) { showToast('Could not rotate this object'); return; }
+        _afterObjectChange(sel);
+      });
+      showToast('Rotated — Undo to revert');
+    }
+    _syncObjectTools();
+    return;
+  }
+
+  const sel = getSelectedLayer();
+  const wasInteract = info.type;
+  const orig = info.orig;
   if (sel) {
     // Only push snapshot if position/size actually changed
     const changed = wasInteract === 'resize'
@@ -8251,9 +8403,10 @@ function _endCanvasInteraction(e) {
 }
 
 // Pointer capture keeps the gesture alive even when the finger leaves the canvas.
-// pointercancel covers Android system gestures stealing the pointer mid-drag.
-document.addEventListener('pointerup', _endCanvasInteraction);
-document.addEventListener('pointercancel', _endCanvasInteraction);
+// pointercancel covers Android system gestures stealing the pointer mid-drag —
+// a cancelled rotate is thrown away instead of being applied.
+document.addEventListener('pointerup', e => _endCanvasInteraction(e, false));
+document.addEventListener('pointercancel', e => _endCanvasInteraction(e, true));
 window.addEventListener('blur', () => { _interact = null; });
 
 
