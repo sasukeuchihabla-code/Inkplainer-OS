@@ -17,6 +17,7 @@ Turn images and text into hand-drawn explainer videos — no sign-up, no waterma
 - **Multiple animation styles** — Chunk Jump, Scanner, Contour, Outline Chunks, plus 7 subject-aware Specialized styles (Human, Animal, Portrait, Vehicle, Building, Landscape, Spiral)
 - **Advanced drawing control** — 5 stroke styles, 4 outline detection algorithms, 3 coloring styles, and 6 image reveal animations
 - **Layer system** — stack images and text layers, set animation order, animate them in sequence or in parallel
+- **Object tools** — duplicate, copy/paste, flip, rotate, bring to front/back, nudge, delete, and recolour text and SVG objects (on-canvas delete/rotate/resize handles work with a finger)
 - **Smooth, adjustable hand movement** — the hand glides continuously across the canvas by default, with a switch to revert to the original snap-to-position movement if you prefer it
 - **Slicer tool** — cut any image into regions using Grid, Rectangle, or Freehand mode; each region becomes its own independently animated layer
 - **Text layers** — place styled text directly on the canvas with font picker, size, bold/italic, alignment, line-height, letter spacing, and color controls
@@ -109,6 +110,45 @@ python3 -m http.server 8080      # then open http://<your-computer-ip>:8080 on t
 10. Tap **Export Video** in the top bar (an open sheet closes automatically) and export a short clip — it must still download and play.
 11. Undo/redo (top bar) still work after a move/resize.
 12. While the sheet is open, tap the project name to rename — the keyboard must not break the layout.
+
+---
+
+## Object Tools — Batch 2
+
+Every object can now be edited directly, from the panel or from the canvas. The **object tools** panel sits above the layer list, so it is in the right panel on desktop and in the **Elements** sheet on a phone.
+
+| Tool | What it does | Keyboard |
+|------|--------------|----------|
+| **Duplicate** | Copy of the object, offset +24/+24 px | `Ctrl/Cmd + D` |
+| **Copy** / **Paste** | Copy one object, paste it (also across projects, until you reload) | `Ctrl/Cmd + C` / `Ctrl/Cmd + V` |
+| **Flip H** | Mirrors the object horizontally — works on photos too, including a full-canvas background image sent to back | — |
+| **Rotate ↺ / ↻** | Rotates 90° around the object's centre | — |
+| **Front** / **Back** | Brings the object to the top of the stack or sends it to the back | — |
+| **Delete** | Removes the object | `Delete` / `Backspace` |
+| **Nudge pad** | Four arrows move the object by 1% of the canvas width (10 px at 720p); rapid taps collapse into one undo step | — |
+| **Object colour** | Text objects: recolours the text. SVG objects: rewrites every non-`none` `fill`/`stroke`. Raster photos are left alone (the panel says so) | — |
+
+On the canvas, the selected object shows four kinds of handles, all sized so they can be grabbed with a finger:
+
+- **Top-left — ✕ delete.** Fires on tap; sliding your finger off the handle before releasing cancels it, so an accidental touch cannot delete an object.
+- **Top-right — ↻ rotate.** Drag around the object's centre; the preview follows your finger and the rotation is baked when you release (cancelled by a system gesture).
+- **Bottom corners — ■ resize**, anchored on the opposite corner.
+- **Edge midpoints — ● resize** one axis only.
+
+Flip and rotate are baked into the object's pixels on purpose: the animation engine and the video export then pick the result up with no changes, and undo works because snapshots already store layer images.
+
+### Test it on a phone (360×800)
+
+1. Add an image, then open **Elements** — the object tools panel appears at the top with the object's name and position.
+2. Tap the four nudge arrows: the object moves ~10 px per tap, the position readout updates, and **Undo** returns it to where it started.
+3. Tap **Duplicate** — a copy appears 24 px down-right; **Copy** then **Paste** adds another.
+4. Tap **Flip H**, then **Rotate ↺**: the object mirrors, then turns 90° and stays centred. Undo steps back through both.
+5. Tap **Back**, then **Front** — the object goes behind and then in front of the others.
+6. On the canvas, tap the red **✕** on the top-left corner: the object is deleted; **Undo** brings it back.
+7. Put a finger on the **↻** handle and drag in a circle — the preview rotates live; lift to apply. Try dragging off the canvas mid-drag: nothing happens.
+8. Drag a **■** corner: the object resizes from the opposite corner and the panel position updates.
+9. Select a text object, pick a colour in **Object colour**: only the text changes colour. Add an SVG file and do the same: its fills and strokes change. Select a photo: the picker is disabled with a "Text & SVG only" note.
+10. Reload the page: the project comes back with every object in the right place and text colour kept.
 
 ---
 
