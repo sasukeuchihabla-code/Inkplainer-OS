@@ -5233,6 +5233,12 @@ function saveProject(projectId = currentProjectId) {
           // Text layer properties
           kind: layer.kind,
           textProps: layer.textProps,
+          // Batch 2: object colour metadata
+          _textContent: layer._textContent, _textFont: layer._textFont, _textSize: layer._textSize,
+          _textBold: layer._textBold, _textItalic: layer._textItalic, _textAlign: layer._textAlign,
+          _textColor: layer._textColor, _textLineHeight: layer._textLineHeight,
+          _textSpacing: layer._textSpacing,
+          _svgSource: layer._svgSource, _svgColor: layer._svgColor,
         })) : [],
         
         selectedLayerId: state.selectedLayerId,
@@ -5412,6 +5418,12 @@ function loadProject(projectId) {
                 // Text layer properties
                 kind: layerData.kind || null,
                 textProps: layerData.textProps || null,
+                _textContent: layerData._textContent, _textFont: layerData._textFont,
+                _textSize: layerData._textSize, _textBold: layerData._textBold,
+                _textItalic: layerData._textItalic, _textAlign: layerData._textAlign,
+                _textColor: layerData._textColor, _textLineHeight: layerData._textLineHeight,
+                _textSpacing: layerData._textSpacing,
+                _svgSource: layerData._svgSource, _svgColor: layerData._svgColor,
               };
               
               state.layers.push(layer);
@@ -5825,9 +5837,10 @@ function _serializeState() {
     colorStyle: state.colorStyle,
     selectedLayerId: state.selectedLayerId,
     groups: JSON.parse(JSON.stringify(state.groups || [])),
-    layers: (state.layers || []).map(layer => ({
+    layers: (state.layers || []).filter(Boolean).map((layer, stackIndex) => ({
       id: layer.id,
       name: layer.name,
+      savedIndex: stackIndex,   // exact visual stack order, restored as-is
       imageDataURL: getImageDataURL(layer.img),
       // Also store origImg for non-destructive crop
       origImageDataURL: layer._origImg ? getImageDataURL(layer._origImg) : null,
@@ -5856,6 +5869,13 @@ function _serializeState() {
       textAnimDir: layer.textAnimDir,
       textDrawStyle: layer.textDrawStyle,
       zigzag: layer.zigzag,
+      // Text + vector metadata (needed by the Batch 2 object colour tool)
+      kind: layer.kind,
+      _textContent: layer._textContent, _textFont: layer._textFont, _textSize: layer._textSize,
+      _textBold: layer._textBold, _textItalic: layer._textItalic, _textAlign: layer._textAlign,
+      _textColor: layer._textColor, _textLineHeight: layer._textLineHeight,
+      _textSpacing: layer._textSpacing,
+      _svgSource: layer._svgSource, _svgColor: layer._svgColor,
     })),
   };
 }
@@ -5996,6 +6016,13 @@ function _applySnapshot(snap, label) {
           textAnimDir: ld.textAnimDir,
           textDrawStyle: ld.textDrawStyle,
           zigzag: ld.zigzag,
+          kind: ld.kind || null,
+          _textContent: ld._textContent, _textFont: ld._textFont, _textSize: ld._textSize,
+          _textBold: ld._textBold, _textItalic: ld._textItalic, _textAlign: ld._textAlign,
+          _textColor: ld._textColor, _textLineHeight: ld._textLineHeight,
+          _textSpacing: ld._textSpacing,
+          _svgSource: ld._svgSource, _svgColor: ld._svgColor,
+          _savedIndex: ld.savedIndex !== undefined ? ld.savedIndex : idx,
           _origImg: origImg || undefined,
           _origX: ld.origX, _origY: ld.origY,
           _origW: ld.origW, _origH: ld.origH,
@@ -6006,7 +6033,10 @@ function _applySnapshot(snap, label) {
 
         if (loaded === total) {
           state.layers = restoredLayers.filter(Boolean);
-          state.layers.sort((a, b) => a.animOrder - b.animOrder);
+          // Restore the exact visual stack order (bring-front/send-back undo),
+          // not animation order — animOrder decides *when* a layer draws.
+          state.layers.sort((a, b) => (a._savedIndex ?? 0) - (b._savedIndex ?? 0));
+          state.layers.forEach(l => delete l._savedIndex);
           state.selectedLayerId = snap.selectedLayerId || (state.layers[0]?.id ?? null);
           renderLayerList();
           redrawLayersOnCanvas();
