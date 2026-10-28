@@ -2336,6 +2336,160 @@ input[type="number"]:focus { border-color: var(--accent); }
 .layer-item.layer-hidden { opacity: 0.45; }
 .layer-item.layer-hidden .layer-thumb { filter: grayscale(1); }
 
+/* ═══════════════════════════════════════════
+   OBJECT TOOLS (Batch 2)
+   Actions for the selected object: duplicate / copy / paste / flip /
+   rotate / stack order / nudge pad / per-object colour.
+═══════════════════════════════════════════ */
+#object-tools {
+  margin: 0 8px 8px;
+  padding: 9px 9px 8px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ot-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+.ot-title {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--muted-hi);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ot-pos {
+  font-size: 9px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.ot-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+.ot-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 5px 4px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--muted-hi);
+  font-family: 'Geist', 'DM Sans', sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: all 0.12s;
+}
+.ot-btn svg { flex-shrink: 0; }
+.ot-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--text); background: var(--surface-2); }
+.ot-btn:active:not(:disabled) { transform: translateY(1px); }
+.ot-btn:disabled { opacity: 0.38; cursor: not-allowed; }
+.ot-btn.ot-danger:hover:not(:disabled) { border-color: var(--accent2); color: var(--accent2); background: rgba(220,38,38,0.07); }
+
+.ot-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.ot-nudge {
+  display: grid;
+  grid-template-columns: repeat(3, 30px);
+  grid-template-rows: repeat(3, 26px);
+  gap: 2px;
+  flex-shrink: 0;
+}
+.ot-np {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted-hi);
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.12s;
+}
+.ot-np:hover:not(:disabled) { border-color: var(--accent); color: var(--text); background: var(--surface-2); }
+.ot-np:active:not(:disabled) { background: var(--accent-lo); }
+.ot-np:disabled { opacity: 0.35; cursor: not-allowed; }
+.ot-np.up    { grid-column: 2; grid-row: 1; }
+.ot-np.left  { grid-column: 1; grid-row: 2; }
+.ot-np.right { grid-column: 3; grid-row: 2; }
+.ot-np.down  { grid-column: 2; grid-row: 3; }
+.ot-np-center {
+  grid-column: 2; grid-row: 2;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 8px;
+  font-weight: 600;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.ot-color-wrap {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  justify-content: center;
+}
+.ot-color-label {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.ot-color-line { display: flex; align-items: center; gap: 7px; min-width: 0; }
+#ot-color {
+  width: 34px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--border-hi);
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+#ot-color:disabled { opacity: 0.4; cursor: not-allowed; }
+#ot-color::-webkit-color-swatch-wrapper { padding: 2px; }
+#ot-color::-webkit-color-swatch { border: none; border-radius: 4px; }
+.ot-color-hint {
+  font-size: 9px;
+  line-height: 1.35;
+  color: var(--muted);
+  min-width: 0;
+}
+.ot-tip {
+  font-size: 9px;
+  line-height: 1.45;
+  color: var(--muted);
+  background: rgba(0,0,0,0.025);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 7px;
+}
+
 /* ── LAYER PANEL HEADER CONTROLS ── */
 .layer-panel-actions {
   display: flex; align-items: center; gap: 4px;
@@ -3564,6 +3718,16 @@ input[type="number"]:focus { border-color: var(--accent); }
   .layer-drag-handle { padding: 11px 8px; font-size: 16px; }
   .layer-order-input { min-height: 40px; font-size: 12px; }
   .lp-action-btn { min-height: 40px; padding: 0 10px; }
+  #object-tools { margin: 0 0 8px; padding: 10px; }
+  .ot-btn { min-height: 44px; font-size: 11px; }
+  .ot-nudge { grid-template-columns: repeat(3, 44px); grid-template-rows: repeat(3, 40px); gap: 3px; }
+  .ot-np { min-height: 40px; }
+  .ot-np svg { width: 15px; height: 15px; }
+  .ot-np-center { font-size: 9px; }
+  #ot-color { width: 48px; height: 40px; }
+  .ot-color-line { gap: 9px; }
+  .ot-color-hint { font-size: 10px; }
+  .ot-tip { font-size: 10px; padding: 7px 8px; }
   .bg-pill { min-height: 44px; display: flex; align-items: center; justify-content: center; }
   .bg-preset { height: 52px; }
   .bg-color-swatch { width: 44px; height: 44px; }
@@ -4623,6 +4787,81 @@ input[type="number"]:focus { border-color: var(--accent); }
 
   <!-- Layer list (wrapped so the mobile Elements sheet can host it) -->
   <div id="rp-layers-section">
+
+  <!-- Object tools (Batch 2): everything applies to the selected object -->
+  <div id="object-tools" data-empty="true" aria-label="Selected object tools">
+    <div class="ot-head">
+      <span class="ot-title" id="ot-name">No object selected</span>
+      <span class="ot-pos" id="ot-pos">—</span>
+    </div>
+
+    <div class="ot-actions">
+      <button class="ot-btn" id="ot-dup" onclick="objectDuplicate()" title="Duplicate (Ctrl+D)" disabled>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+        Duplicate
+      </button>
+      <button class="ot-btn" id="ot-copy" onclick="objectCopy()" title="Copy (Ctrl+C)" disabled>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="8" y="8" width="8" height="8" rx="1.5"/></svg>
+        Copy
+      </button>
+      <button class="ot-btn" id="ot-paste" onclick="objectPaste()" title="Paste (Ctrl+V)" disabled>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
+        Paste
+      </button>
+      <button class="ot-btn" id="ot-flip" onclick="objectFlipH()" title="Flip horizontally" disabled>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M8 7L3 12l5 5z"/><path d="M16 7l5 5-5 5z"/></svg>
+        Flip H
+      </button>
+      <button class="ot-btn" id="ot-rot-l" onclick="objectRotate90(-1)" title="Rotate 90° left" disabled>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+        Rotate
+      </button>
+      <button class="ot-btn" id="ot-rot-r" onclick="objectRotate90(1)" title="Rotate 90° right" disabled>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"/></svg>
+        Rotate
+      </button>
+      <button class="ot-btn" id="ot-front" onclick="objectBringFront()" title="Bring to front" disabled>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="12" height="12" rx="2"/><path d="M9 21h10a2 2 0 0 0 2-2V9"/></svg>
+        Front
+      </button>
+      <button class="ot-btn" id="ot-back" onclick="objectSendBack()" title="Send to back" disabled>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M15 3H5a2 2 0 0 0-2 2v10"/></svg>
+        Back
+      </button>
+      <button class="ot-btn ot-danger" id="ot-del" onclick="objectDelete()" title="Delete object (Delete key)" disabled>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+        Delete
+      </button>
+    </div>
+
+    <div class="ot-row">
+      <div class="ot-nudge" role="group" aria-label="Nudge selected object">
+        <button class="ot-np up" id="ot-np-up" onclick="objectNudge(0,-1)" title="Move up" aria-label="Nudge up" disabled>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M6 11l6-6 6 6"/></svg>
+        </button>
+        <button class="ot-np left" id="ot-np-left" onclick="objectNudge(-1,0)" title="Move left" aria-label="Nudge left" disabled>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg>
+        </button>
+        <span class="ot-np-center" id="ot-step">10</span>
+        <button class="ot-np right" id="ot-np-right" onclick="objectNudge(1,0)" title="Move right" aria-label="Nudge right" disabled>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+        </button>
+        <button class="ot-np down" id="ot-np-down" onclick="objectNudge(0,1)" title="Move down" aria-label="Nudge down" disabled>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M6 13l6 6 6-6"/></svg>
+        </button>
+      </div>
+      <div class="ot-color-wrap">
+        <label class="ot-color-label" for="ot-color">Object colour</label>
+        <div class="ot-color-line">
+          <input type="color" id="ot-color" value="#1a1a1a" oninput="onObjectColorInput(this.value)" disabled>
+          <span class="ot-color-hint" id="ot-color-hint">Select an object</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ot-tip">On the canvas: <strong>&#10005;</strong> delete &middot; <strong>&#8635;</strong> drag to rotate &middot; <strong>&#9635;</strong> drag to resize</div>
+  </div>
+
   <div class="layer-panel-header" style="margin-top:10px">
     <div class="layer-panel-title">
       <span>Layers</span>
@@ -6473,7 +6712,7 @@ window.addEventListener('resize', fitCanvas);
 // ─────────────────────────────────────────────
 let _layerIdCounter = 0;
 
-function addLayer(img, name) {
+function addLayer(img, name, meta) {
   pushUndoSnapshot();
   const id = ++_layerIdCounter;
   // Default size: fit within canvas keeping aspect ratio, at 80% of canvas
@@ -6509,6 +6748,11 @@ function addLayer(img, name) {
     chunks: 30,
     specChunks: 35,
     hasPngAlpha };
+  // Vector source (kept so the Batch 2 object colour tool can rewrite fills)
+  if (meta && meta.svgSource) {
+    layer._svgSource = meta.svgSource;
+    layer._svgColor  = meta.svgColor || null;
+  }
   state.layers.push(layer);
   
   // Ensure canvas is properly fitted after adding layer
@@ -7450,6 +7694,435 @@ function hitTestLayer(px, py) {
   }
   return null;
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// OBJECT TOOLS (Batch 2)
+//   Selected object: duplicate / copy / paste / flip / rotate / stack order /
+//   nudge pad / per-object colour, plus the delete + rotate handles drawn on
+//   the canvas (see drawSelectionHandles below).
+//
+//   Flip and rotate are BAKED into the layer's image on purpose: the animation
+//   engine and the export pipeline then pick the result up for free, and undo
+//   keeps working because snapshots already store the image data URL.
+// ═══════════════════════════════════════════════════════════════════════════
+
+var _rotPreview = null;      // {layerId, angle, img, x, y, w, h} while dragging the rotate handle
+var _pendingDelete = null;   // {layerId, pointerId, x, y} — tap on the delete handle
+var _objClipboard = null;    // copied object: image data URL + every per-object property
+var _nudgeSnapshotAt = 0;    // throttle nudge undo steps
+
+const MAX_BAKE_DIM = 4096;   // keep baked canvases inside phone memory limits
+
+// ── Colour helpers ───────────────────────────────────────────────────────
+function _toHexColor(v) {
+  if (!v) return '#1a1a1a';
+  const str = String(v).trim();
+  if (/^#[0-9a-f]{6}$/i.test(str)) return str;
+  if (/^#[0-9a-f]{3}$/i.test(str)) return '#' + str.slice(1).split('').map(c => c + c).join('');
+  const probe = document.createElement('canvas').getContext('2d');
+  probe.fillStyle = '#000000';
+  probe.fillStyle = str;
+  const out = probe.fillStyle;
+  return /^#[0-9a-f]{6}$/i.test(out) ? out : '#1a1a1a';
+}
+
+// Which objects can be recoloured, and how
+function _layerColorKind(layer) {
+  if (!layer) return null;
+  if (layer.kind === 'text' && layer._textContent) return 'text';
+  if (layer._svgSource) return 'svg';
+  return null;
+}
+
+// Render a text layer's pixels from its own properties (same metrics as the
+// text tool, so a recolour never changes the object's size).
+function _renderTextCanvas(p) {
+  const lines = String(p.text || '').split('\n');
+  const size  = p.size || 72;
+  const probe = document.createElement('canvas');
+  probe.width = Math.max(1, state.canvasW); probe.height = 4;
+  const pctx = probe.getContext('2d');
+  const fontStr = `${p.italic ? 'italic ' : ''} ${p.bold ? 'bold ' : ''} ${size}px '${p.font || 'Caveat'}'`;
+  pctx.font = fontStr;
+  pctx.letterSpacing = (p.spacing || 0) + 'px';
+  const maxW = Math.min(state.canvasW, Math.max(1, ...lines.map(l => pctx.measureText(l).width)) + size * 0.4);
+  const lineH = size * (p.lineHeight || 1.3);
+  const totalH = lines.length * lineH + size * 0.3;
+
+  const tc = document.createElement('canvas');
+  tc.width  = Math.max(1, Math.ceil(maxW));
+  tc.height = Math.max(1, Math.ceil(totalH));
+  const tctx = tc.getContext('2d');
+  tctx.font = fontStr;
+  tctx.letterSpacing = (p.spacing || 0) + 'px';
+  tctx.fillStyle = p.color || '#111111';
+  tctx.textBaseline = 'top';
+  tctx.textAlign = p.align === 'center' ? 'center' : p.align === 'right' ? 'right' : 'left';
+  const tx = p.align === 'center' ? tc.width / 2 : p.align === 'right' ? tc.width : 0;
+  lines.forEach((ln, i) => tctx.fillText(ln, tx, i * lineH + size * 0.1));
+  return tc;
+}
+
+// Swap every non-"none" fill/stroke in an SVG document for one colour
+function _recolorSvgSource(src, hex) {
+  if (!src) return src;
+  const skip = v => {
+    const t = String(v || '').trim().toLowerCase();
+    return !t || t === 'none' || t === 'transparent' || t === 'inherit' || t === 'currentcolor' || t.startsWith('url(');
+  };
+  let out = src.replace(/\b(fill|stroke)(\s*=\s*)"([^"]*)"/gi,
+    (m, attr, eq, val) => skip(val) ? m : `${attr}${eq}"${hex}"`);
+  out = out.replace(/\b(fill|stroke)(\s*=\s*)'([^']*)'/gi,
+    (m, attr, eq, val) => skip(val) ? m : `${attr}${eq}'${hex}'`);
+  if (!/<svg[^>]*\sfill\s*=/i.test(out)) {
+    out = out.replace(/<svg/i, `<svg fill="${hex}"`);
+  }
+  return out;
+}
+
+function _recolorTextLayer(layer, hex) {
+  const canvas = _renderTextCanvas({
+    text: layer._textContent || layer.name,
+    font: layer._textFont, size: layer._textSize,
+    bold: layer._textBold, italic: layer._textItalic, align: layer._textAlign,
+    lineHeight: layer._textLineHeight, spacing: layer._textSpacing,
+    color: hex,
+  });
+  const img = new Image();
+  img.onload = () => {
+    layer.img = img;
+    layer._textColor = hex;
+    layer.hasPngAlpha = true;
+    redrawLayersOnCanvas();
+    drawSelectionHandles();
+    renderLayerList();
+    _syncObjectTools();
+    scheduleAutoSave();
+  };
+  img.src = canvas.toDataURL('image/png');
+}
+
+function _recolorSvgLayer(layer, hex) {
+  const out = _recolorSvgSource(layer._svgSource, hex);
+  const img = new Image();
+  img.onload = () => {
+    layer.img = img;
+    layer._svgColor = hex;
+    redrawLayersOnCanvas();
+    drawSelectionHandles();
+    renderLayerList();
+    _syncObjectTools();
+    scheduleAutoSave();
+  };
+  img.onerror = () => showToast('Could not recolour this SVG');
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(out);
+}
+
+function onObjectColorInput(hex) { applyObjectColor(hex); }
+
+function applyObjectColor(hex) {
+  const layer = getSelectedLayer();
+  if (!layer) return;
+  const kind = _layerColorKind(layer);
+  if (!kind) { showToast('Object colour works on text and SVG objects'); return; }
+  pushUndoSnapshot();
+  if (kind === 'text') _recolorTextLayer(layer, hex);
+  else _recolorSvgLayer(layer, hex);
+}
+
+// ── Image transforms (baked into the layer image) ────────────────────────
+function _transformLayerImage(layer, opts, done) {
+  const angle = opts.angle || 0;
+  const flipX = !!opts.flipX;
+  const src   = opts.srcImg || layer.img;
+  const sw = src && (src.naturalWidth || src.width);
+  const sh = src && (src.naturalHeight || src.height);
+  if (!sw || !sh) { if (done) done(false); return; }
+
+  const cos = Math.abs(Math.cos(angle)), sin = Math.abs(Math.sin(angle));
+  let cw = Math.max(1, Math.round(sw * cos + sh * sin));
+  let ch = Math.max(1, Math.round(sw * sin + sh * cos));
+
+  // Keep the baked canvas sane — phones run out of canvas memory quickly
+  const scale = Math.max(cw, ch) > MAX_BAKE_DIM ? MAX_BAKE_DIM / Math.max(cw, ch) : 1;
+  cw = Math.max(1, Math.round(cw * scale));
+  ch = Math.max(1, Math.round(ch * scale));
+
+  const bake = document.createElement('canvas');
+  bake.width = cw; bake.height = ch;
+  const bctx = bake.getContext('2d');
+  bctx.imageSmoothingEnabled = true;
+  bctx.imageSmoothingQuality = 'high';
+  bctx.translate(cw / 2, ch / 2);
+  if (angle) bctx.rotate(angle);
+  if (flipX) bctx.scale(-1, 1);
+  bctx.drawImage(src, -sw * scale / 2, -sh * scale / 2, sw * scale, sh * scale);
+
+  const centerX = layer.x + layer.w / 2;
+  const centerY = layer.y + layer.h / 2;
+  const scaleX  = layer.w / sw;
+  const scaleY  = layer.h / sh;
+
+  const img = new Image();
+  img.onload = () => {
+    layer.img = img;
+    layer.w = Math.max(20, Math.round(cw * scaleX));
+    layer.h = Math.max(20, Math.round(ch * scaleY));
+    layer.x = Math.round(centerX - layer.w / 2);
+    layer.y = Math.round(centerY - layer.h / 2);
+    // The baked pixels are now the source of truth: drop the old crop source
+    // and re-baseline the resize slider so the object keeps its current size.
+    delete layer._origImg;
+    delete layer._origX; delete layer._origY; delete layer._origW; delete layer._origH;
+    syncLayerResizeFromCurrentSize(layer);
+    if (done) done(true);
+  };
+  img.onerror = () => { if (done) done(false); };
+  img.src = bake.toDataURL('image/png');
+}
+
+function _afterObjectChange(layer) {
+  redrawLayersOnCanvas();
+  drawSelectionHandles();
+  renderLayerList();
+  fitCanvas();
+  _syncObjectTools();
+  scheduleAutoSave();
+}
+
+// ── Actions ──────────────────────────────────────────────────────────────
+function objectRotate90(dir) {
+  const layer = getSelectedLayer();
+  if (!layer) return;
+  pushUndoSnapshot();
+  _transformLayerImage(layer, { angle: (dir < 0 ? -1 : 1) * Math.PI / 2 }, ok => {
+    if (!ok) { showToast('Could not rotate this object'); return; }
+    _afterObjectChange(layer);
+    showToast(`Rotated 90° ${dir < 0 ? 'left' : 'right'} — Undo to revert`);
+  });
+}
+
+function objectFlipH() {
+  const layer = getSelectedLayer();
+  if (!layer) return;
+  pushUndoSnapshot();
+  _transformLayerImage(layer, { flipX: true }, ok => {
+    if (!ok) { showToast('Could not flip this object'); return; }
+    _afterObjectChange(layer);
+    showToast('Flipped horizontally — Undo to revert');
+  });
+}
+
+function objectDelete() {
+  const layer = getSelectedLayer();
+  if (!layer) return;
+  const name = layer.name;
+  removeLayer(layer.id);
+  _syncObjectTools();
+  showToast(`Deleted “${name}” — Undo restores it`);
+}
+
+function _clipboardFromLayer(layer) {
+  return {
+    dataURL: getImageDataURL(layer.img),
+    name: layer.name,
+    x: layer.x, y: layer.y, w: layer.w, h: layer.h,
+    props: {
+      animStyle: layer.animStyle, hand: layer.hand, animOrder: layer.animOrder,
+      opacity: layer.opacity, visible: true, groupId: null,
+      speed: layer.speed, handSpeed: layer.handSpeed,
+      chunks: layer.chunks, specChunks: layer.specChunks,
+      hasPngAlpha: layer.hasPngAlpha,
+      outlineDetect: layer.outlineDetect, outlineAlgorithm: layer.outlineAlgorithm,
+      outlineStrokeStyle: layer.outlineStrokeStyle, colorStyle: layer.colorStyle,
+      outlineColor: layer.outlineColor, outlineThickness: layer.outlineThickness,
+      textAnimDir: layer.textAnimDir, textDrawStyle: layer.textDrawStyle,
+      kind: layer.kind,
+      _textContent: layer._textContent, _textFont: layer._textFont, _textSize: layer._textSize,
+      _textBold: layer._textBold, _textItalic: layer._textItalic, _textAlign: layer._textAlign,
+      _textColor: layer._textColor, _textLineHeight: layer._textLineHeight,
+      _textSpacing: layer._textSpacing,
+      _svgSource: layer._svgSource, _svgColor: layer._svgColor,
+    },
+  };
+}
+
+function objectCopy() {
+  const layer = getSelectedLayer();
+  if (!layer) return;
+  _objClipboard = _clipboardFromLayer(layer);
+  _syncObjectTools();
+  showToast('Object copied — Paste or Ctrl+V');
+}
+
+function _placeClipboard(offsetX, offsetY) {
+  const clip = _objClipboard;
+  if (!clip) return;
+  pushUndoSnapshot();
+  const img = new Image();
+  img.onload = () => {
+    const id = ++_layerIdCounter;
+    const layer = Object.assign({
+      id,
+      name: clip.name,
+      img,
+      x: Math.round(clip.x + offsetX),
+      y: Math.round(clip.y + offsetY),
+      w: clip.w, h: clip.h,
+      baseW: clip.w, baseH: clip.h,
+      resizePct: 100,
+    }, clip.props);
+    state.layers.push(layer);
+    renderLayerList();
+    selectLayer(id);
+    redrawLayersOnCanvas();
+    fitCanvas();
+    _syncObjectTools();
+    scheduleAutoSave();
+  };
+  img.onerror = () => showToast('Paste failed');
+  img.src = clip.dataURL;
+}
+
+function objectPaste() {
+  if (!_objClipboard) { showToast('Nothing copied yet'); return; }
+  _placeClipboard(24, 24);
+  showToast('Object pasted');
+}
+
+function objectDuplicate() {
+  const layer = getSelectedLayer();
+  if (!layer) return;
+  const previous = _objClipboard;
+  _objClipboard = _clipboardFromLayer(layer);
+  _placeClipboard(24, 24);
+  _objClipboard = previous;   // duplicating must not clobber the clipboard
+  _syncObjectTools();
+  showToast('Object duplicated');
+}
+
+function objectBringFront() {
+  const layer = getSelectedLayer();
+  if (!layer) return;
+  if (state.layers[state.layers.length - 1] === layer) return;
+  pushUndoSnapshot();
+  state.layers = state.layers.filter(l => l && l.id !== layer.id).concat([layer]);
+  renderLayerList();
+  redrawLayersOnCanvas();
+  drawSelectionHandles();
+  _syncObjectTools();
+  scheduleAutoSave();
+}
+
+function objectSendBack() {
+  const layer = getSelectedLayer();
+  if (!layer) return;
+  if (state.layers[0] === layer) return;
+  pushUndoSnapshot();
+  state.layers = [layer].concat(state.layers.filter(l => l && l.id !== layer.id));
+  renderLayerList();
+  redrawLayersOnCanvas();
+  drawSelectionHandles();
+  _syncObjectTools();
+  scheduleAutoSave();
+}
+
+function _nudgeStep() { return Math.max(4, Math.round(state.canvasW / 100)); }
+
+function objectNudge(dx, dy) {
+  const layer = getSelectedLayer();
+  if (!layer) return;
+  // Coalesce rapid taps into one undo step
+  const now = Date.now();
+  if (now - _nudgeSnapshotAt > 800) { pushUndoSnapshot(); _nudgeSnapshotAt = now; }
+  const step = _nudgeStep();
+  layer.x = Math.round(layer.x + dx * step);
+  layer.y = Math.round(layer.y + dy * step);
+  redrawLayersOnCanvas();
+  drawSelectionHandles();
+  const panel = document.getElementById(`ls-${layer.id}`);
+  if (panel) ['x','y'].forEach(p => {
+    const inp = panel.querySelector(`input[onchange*="'${p}'"]`);
+    if (inp) inp.value = Math.round(layer[p]);
+  });
+  _syncObjectTools();
+  scheduleAutoSave();
+}
+
+// ── Panel state ──────────────────────────────────────────────────────────
+function _syncObjectTools() {
+  const panel = document.getElementById('object-tools');
+  if (!panel) return;
+  const layer = getSelectedLayer();
+  const has = !!layer;
+  panel.setAttribute('data-empty', has ? 'false' : 'true');
+
+  ['ot-dup','ot-copy','ot-flip','ot-rot-l','ot-rot-r','ot-front','ot-back','ot-del',
+   'ot-np-up','ot-np-left','ot-np-right','ot-np-down'].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) b.disabled = !has;
+  });
+  const pasteBtn = document.getElementById('ot-paste');
+  if (pasteBtn) pasteBtn.disabled = !_objClipboard;
+
+  const nameEl = document.getElementById('ot-name');
+  const posEl  = document.getElementById('ot-pos');
+  if (nameEl) nameEl.textContent = has ? layer.name : 'No object selected';
+  if (posEl)  posEl.textContent  = has ? `${Math.round(layer.x)}, ${Math.round(layer.y)}` : '—';
+
+  const stepEl = document.getElementById('ot-step');
+  if (stepEl) stepEl.textContent = String(_nudgeStep());
+
+  if (has) {
+    const frontBtn = document.getElementById('ot-front');
+    const backBtn  = document.getElementById('ot-back');
+    if (frontBtn) frontBtn.disabled = state.layers[state.layers.length - 1] === layer;
+    if (backBtn)  backBtn.disabled  = state.layers[0] === layer;
+  }
+
+  const color = document.getElementById('ot-color');
+  const hint  = document.getElementById('ot-color-hint');
+  const kind  = _layerColorKind(layer);
+  if (color) {
+    color.disabled = !kind;
+    if (kind === 'text') color.value = _toHexColor(layer._textColor);
+    else if (kind === 'svg') color.value = _toHexColor(layer._svgColor);
+  }
+  if (hint) {
+    hint.textContent = !has ? 'Select an object'
+      : kind === 'text' ? 'Text colour'
+      : kind === 'svg'  ? 'SVG fill & stroke'
+      : 'Text & SVG only';
+  }
+}
+
+// Keep the panel in sync whenever the selection or the layer list changes
+const _origSelectLayerForTools = window.selectLayer;
+window.selectLayer = function (id) {
+  const out = typeof _origSelectLayerForTools === 'function'
+    ? _origSelectLayerForTools.apply(this, arguments) : undefined;
+  _syncObjectTools();
+  return out;
+};
+const _origRenderLayerListForTools = window.renderLayerList;
+window.renderLayerList = function () {
+  const out = typeof _origRenderLayerListForTools === 'function'
+    ? _origRenderLayerListForTools.apply(this, arguments) : undefined;
+  _syncObjectTools();
+  return out;
+};
+
+// Copy / paste / duplicate shortcuts (skipped while typing in a field)
+document.addEventListener('keydown', e => {
+  const tag = document.activeElement && document.activeElement.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+  const mod = e.ctrlKey || e.metaKey;
+  if (!mod) return;
+  const key = (e.key || '').toLowerCase();
+  if (key === 'c' && state.selectedLayerId) { e.preventDefault(); objectCopy(); }
+  else if (key === 'v' && _objClipboard)    { e.preventDefault(); objectPaste(); }
+  else if (key === 'd')                     { e.preventDefault(); objectDuplicate(); }
+});
 
 const wrapper = document.getElementById('canvas-wrapper');
 selectCanvas.style.pointerEvents = 'auto';
@@ -8817,9 +9490,24 @@ fileInput.addEventListener('change', ()=>{ Array.from(fileInput.files).forEach(l
 function loadImageFile(file) {
   const reader = new FileReader();
   reader.onload = e => {
+    const dataURL = e.target.result;
+    const isSvg = /svg/i.test(file.type || '') || /\.svgz?$/i.test(file.name || '');
+    const name  = file.name.replace(/\.[^.]+$/,'');
     const img = new Image();
-    img.onload = () => addLayer(img, file.name.replace(/\.[^.]+$/,''));
-    img.src = e.target.result;
+    img.onload = () => {
+      if (!isSvg) { addLayer(img, name); return; }
+      // Re-read the file as text: the object colour tool rewrites fill/stroke
+      // in this source instead of tinting raster pixels.
+      try {
+        const tr = new FileReader();
+        tr.onload = ev => addLayer(img, name, { svgSource: String(ev.target.result) });
+        tr.onerror = () => addLayer(img, name);
+        tr.readAsText(file);
+      } catch (_) {
+        addLayer(img, name);
+      }
+    };
+    img.src = dataURL;
   };
   reader.readAsDataURL(file);
 }
